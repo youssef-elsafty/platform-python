@@ -25,6 +25,9 @@
                     </button>
                     <div id="user-pill" style="display: none; align-items: center; gap: 8px;">
                         <span id="user-name-display" style="font-weight: 700; color: #f59e0b; font-size: 0.85rem;"></span>
+                        <a id="btn-admin-link" href="/admin" class="btn-action" style="display: none; padding: 4px 10px; font-size: 0.75rem; text-decoration: none; background: linear-gradient(135deg, #f59e0b, #d97706);">
+                            👑 لوحة الإدمن
+                        </a>
                         <button onclick="logoutUser()" class="btn-secondary btn-danger" style="padding: 4px 10px; font-size: 0.75rem;">خروج</button>
                     </div>
                 </div>
@@ -295,13 +298,17 @@
                 const userPill = document.getElementById('user-pill');
                 const nameDisplay = document.getElementById('user-name-display');
 
+                const adminBtn = document.getElementById('btn-admin-link');
+
                 if (platformState.user) {
                     openAuthBtn.style.display = 'none';
                     userPill.style.display = 'flex';
                     nameDisplay.textContent = '👤 ' + platformState.user.username;
+                    adminBtn.style.display = (platformState.user.role === 'admin') ? 'inline-block' : 'none';
                 } else {
                     openAuthBtn.style.display = 'block';
                     userPill.style.display = 'none';
+                    adminBtn.style.display = 'none';
                 }
 
                 renderRoadmap();

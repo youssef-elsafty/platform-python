@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import urllib.parse
@@ -88,8 +88,20 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             self.path = "/templates/index.html"
             return super().do_GET()
 
+        # Serve Admin Dashboard View
+        if path == "/admin" or path == "/admin.html":
+            self.path = "/templates/admin.html"
+            return super().do_GET()
+
         current_user = self.get_current_user()
         session_token = self.get_session_token()
+
+        # Admin Dashboard Statistics (Protected: Admin role required)
+        if path == "/api/admin/stats":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح (Forbidden): هذا القسم مخصص لمدير المنصة فقط"}, status=403)
+            stats = db.get_admin_dashboard_stats()
+            return self.send_json(stats)
 
         # 1. Auth Me Endpoint + CSRF token provisioning
         if path == "/api/auth/me":
@@ -198,7 +210,7 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 return self.send_json(reg_res, status=400)
 
             # Auto-login
-            login_res = db.authenticate_user(username, password)
+            login_res = db.authenticate_user(username, password, ip_address=client_ip)
             cookie = f"session={login_res['session_token']}; Path=/; HttpOnly; SameSite=Lax"
             return self.send_json(login_res, status=200, set_cookie=cookie)
 
@@ -210,7 +222,7 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             if not username_or_email or not password:
                 return self.send_json({"success": False, "error": "يرجى إدخال اسم المستخدم وكلمة المرور"}, status=400)
 
-            login_res = db.authenticate_user(username_or_email, password)
+            login_res = db.authenticate_user(username_or_email, password, ip_address=client_ip)
             if not login_res["success"]:
                 return self.send_json(login_res, status=401)
 

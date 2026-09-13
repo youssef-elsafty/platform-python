@@ -1,10 +1,11 @@
-﻿"""
+"""
 Universal Database Access Layer (PostgreSQL & SQLite Fallback)
 Features:
 - Connects to PostgreSQL via DATABASE_URL if provided (with connection pooling)
 - Automatically applies schema migrations
 - Seamless fallback to local SQLite for lightweight local offline development
 - Full Transactions, Parameterized Queries, and Foreign Keys support
+- Admin Dashboard Queries and Activity Logging
 """
 
 import os
@@ -13,15 +14,14 @@ import hashlib
 import hmac
 import secrets
 import uuid
+import datetime
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
-# Check if psycopg2 or psycopg is available for PostgreSQL
 PG_AVAILABLE = False
 pg_pool = None
 
 if DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://"):
-    # Fix Render/Heroku postgres:// URLs to postgresql://
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     try:
@@ -48,7 +48,7 @@ class DBConnection:
             self.conn = pg_pool.getconn()
             return self
         else:
-            self.conn = sqlite3.connect(SQLITE_FILE)
+            self.conn = sqlite3.connect(SQLITE_FILE, timeout=20.0)
             self.conn.row_factory = sqlite3.Row
             return self
 
@@ -66,7 +66,6 @@ class DBConnection:
 
     def execute(self, query: str, params: tuple = ()):
         if self.is_pg:
-            # Replace sqlite ? with postgres %s
             pg_query = query.replace("?", "%s")
             cur = self.conn.cursor(cursor_factory=RealDictCursor)
             cur.execute(pg_query, params)
@@ -91,7 +90,6 @@ class DBConnection:
 def get_db():
     return DBConnection()
 
-# Password Hashing using PBKDF2-HMAC-SHA256
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
     key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
@@ -109,19 +107,19 @@ def init_db():
     """Initializes schema and runs migrations"""
     with get_db() as db:
         if db.is_pg:
-            # Read migration 001
-            migration_path = os.path.join(os.path.dirname(__file__), "migrations", "001_initial_schema.sql")
-            if os.path.exists(migration_path):
-                with open(migration_path, "r", encoding="utf-8") as f:
-                    db.conn.cursor().execute(f.read())
+            for migration_file in ["001_initial_schema.sql", "002_admin_and_logs.sql"]:
+                m_path = os.path.join(os.path.dirname(__file__), "migrations", migration_file)
+                if os.path.exists(m_path):
+                    with open(m_path, "r", encoding="utf-8") as f:
+                        db.conn.cursor().execute(f.read())
         else:
-            # SQLite Schema
             db.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id TEXT PRIMARY KEY,
                     username TEXT UNIQUE NOT NULL,
                     email TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
+                    role TEXT DEFAULT 'student',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -131,6 +129,15 @@ def init_db():
                     user_id TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS login_logs (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    ip_address TEXT,
+                    login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             db.execute("""
@@ -153,17 +160,26 @@ def init_db():
                 )
             """)
 
-# User Operations
-def create_user(username: str, email: str, password: str):
+        # Ensure default admin account exists: youssef / admin123
+        admin = db.fetchone("SELECT id FROM users WHERE LOWER(username) = ?", ("youssef",))
+        if not admin:
+            admin_id = str(uuid.uuid4())
+            admin_hash = hash_password("admin123")
+            db.execute(
+                "INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)",
+                (admin_id, "youssef", "admin@pythonmastery.com", admin_hash, "admin")
+            )
+
+def create_user(username: str, email: str, password: str, role: str = "student"):
     user_id = str(uuid.uuid4())
     p_hash = hash_password(password)
     try:
         with get_db() as db:
             db.execute(
-                "INSERT INTO users (id, username, email, password_hash) VALUES (?, ?, ?, ?)",
-                (user_id, username.strip(), email.strip().lower(), p_hash)
+                "INSERT INTO users (id, username, email, password_hash, role) VALUES (?, ?, ?, ?, ?)",
+                (user_id, username.strip(), email.strip().lower(), p_hash, role)
             )
-        return {"success": True, "user": {"id": user_id, "username": username, "email": email}}
+        return {"success": True, "user": {"id": user_id, "username": username, "email": email, "role": role}}
     except Exception as e:
         err = str(e).lower()
         if "unique" in err or "duplicate" in err:
@@ -172,11 +188,22 @@ def create_user(username: str, email: str, password: str):
             return {"success": False, "error": "البريد الإلكتروني مسجل بالفعل"}
         return {"success": False, "error": f"حدث خطأ أثناء التسجيل: {str(e)}"}
 
-def authenticate_user(username_or_email: str, password: str):
+def log_login_event(user_id: str, username: str, ip_address: str):
+    try:
+        log_id = str(uuid.uuid4())
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO login_logs (id, user_id, username, ip_address) VALUES (?, ?, ?, ?)",
+                (log_id, user_id, username, ip_address)
+            )
+    except Exception as e:
+        print(f"Error logging login event: {e}")
+
+def authenticate_user(username_or_email: str, password: str, ip_address: str = "127.0.0.1"):
     identifier = username_or_email.strip().lower()
     with get_db() as db:
         user = db.fetchone(
-            "SELECT id, username, email, password_hash FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?",
+            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?",
             (identifier, identifier)
         )
         
@@ -185,6 +212,13 @@ def authenticate_user(username_or_email: str, password: str):
 
         token = secrets.token_urlsafe(32)
         db.execute("INSERT INTO sessions (session_token, user_id) VALUES (?, ?)", (token, user["id"]))
+        
+        # Log this successful login directly within the connection
+        log_id = str(uuid.uuid4())
+        db.execute(
+            "INSERT INTO login_logs (id, user_id, username, ip_address) VALUES (?, ?, ?, ?)",
+            (log_id, user["id"], user["username"], ip_address)
+        )
 
         return {
             "success": True,
@@ -192,7 +226,8 @@ def authenticate_user(username_or_email: str, password: str):
             "user": {
                 "id": user["id"],
                 "username": user["username"],
-                "email": user["email"]
+                "email": user["email"],
+                "role": user.get("role", "student")
             }
         }
 
@@ -201,7 +236,7 @@ def get_user_by_session(token: str):
         return None
     with get_db() as db:
         return db.fetchone("""
-            SELECT u.id, u.username, u.email 
+            SELECT u.id, u.username, u.email, u.role 
             FROM sessions s
             JOIN users u ON s.user_id = u.id
             WHERE s.session_token = ?
@@ -213,7 +248,6 @@ def delete_session(token: str):
     with get_db() as db:
         db.execute("DELETE FROM sessions WHERE session_token = ?", (token,))
 
-# Progress Tracking Operations
 def mark_task_done(user_id: str, task_id: str, lesson_id: str):
     with get_db() as db:
         if db.is_pg:
@@ -262,3 +296,41 @@ def reset_user_progress(user_id: str):
     with get_db() as db:
         db.execute("DELETE FROM completed_tasks WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM completed_lessons WHERE user_id = ?", (user_id,))
+
+# ================= ADMIN DASHBOARD QUERIES =================
+def get_admin_dashboard_stats():
+    with get_db() as db:
+        total_users = db.fetchone("SELECT COUNT(*) as count FROM users")["count"]
+        total_tasks_solved = db.fetchone("SELECT COUNT(*) as count FROM completed_tasks")["count"]
+        total_lessons_completed = db.fetchone("SELECT COUNT(*) as count FROM completed_lessons")["count"]
+        
+        # Recent Logins (Who logged in, when, from which IP)
+        recent_logins = db.fetchall("""
+            SELECT username, ip_address, login_time 
+            FROM login_logs 
+            ORDER BY rowid DESC 
+            LIMIT 25
+        """)
+
+        # Student Progress Overview
+        students = db.fetchall("""
+            SELECT 
+                u.id, 
+                u.username, 
+                u.email, 
+                u.role,
+                u.created_at,
+                (SELECT COUNT(*) FROM completed_tasks ct WHERE ct.user_id = u.id) as solved_tasks,
+                (SELECT COUNT(*) FROM completed_lessons cl WHERE cl.user_id = u.id) as finished_lessons,
+                (SELECT MAX(login_time) FROM login_logs ll WHERE ll.user_id = u.id) as last_login
+            FROM users u
+            ORDER BY u.created_at DESC
+        """)
+
+        return {
+            "total_users": total_users,
+            "total_tasks_solved": total_tasks_solved,
+            "total_lessons_completed": total_lessons_completed,
+            "recent_logins": recent_logins,
+            "students": students
+        }
