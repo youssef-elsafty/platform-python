@@ -26,9 +26,6 @@
                     </button>
                     <div id="user-pill" style="display: none; align-items: center; gap: 6px;">
                         <span id="user-name-display" style="font-weight: 800; color: #f59e0b; font-size: 0.8rem;"></span>
-                        <a id="btn-admin-link" href="/admin" class="btn-action" style="display: none; padding: 4px 8px; font-size: 0.72rem; text-decoration: none; background: linear-gradient(135deg, #f59e0b, #d97706);">
-                            👑 إدمن
-                        </a>
                         <button onclick="logoutUser()" class="btn-secondary btn-danger" style="padding: 4px 8px; font-size: 0.72rem;">خروج</button>
                     </div>
                 </div>
@@ -60,9 +57,6 @@
                 </a>
                 <a href="#lesson-view-anchor" onclick="closeMobileDrawer()" class="drawer-link">
                     <span>📖</span> الدرس الحالي والمهام
-                </a>
-                <a id="drawer-admin-link" href="/admin" class="drawer-link" style="display: none; color: #f59e0b;">
-                    <span>👑</span> لوحة تحكم المشرف (Admin)
                 </a>
                 <button onclick="resetProgress(); closeMobileDrawer();" class="drawer-link" style="color: #f87171; text-align: right; width: 100%;">
                     <span>🔄</span> إعادة ضبط التقدم
@@ -421,23 +415,15 @@
                 const userPill = document.getElementById('user-pill');
                 const nameDisplay = document.getElementById('user-name-display');
 
-                const adminBtn = document.getElementById('btn-admin-link');
-
                 if (platformState.user) {
                     openAuthBtn.style.display = 'none';
                     userPill.style.display = 'flex';
                     nameDisplay.textContent = '👤 ' + platformState.user.username;
-                    adminBtn.style.display = (platformState.user.role === 'admin') ? 'inline-block' : 'none';
-                    const drawerAdmin = document.getElementById('drawer-admin-link');
-                    if (drawerAdmin) drawerAdmin.style.display = (platformState.user.role === 'admin') ? 'flex' : 'none';
                     const greeting = document.getElementById('student-greeting');
                     if (greeting) greeting.textContent = `👋 مرحباً بك يا ${platformState.user.username}`;
                 } else {
                     openAuthBtn.style.display = 'block';
                     userPill.style.display = 'none';
-                    adminBtn.style.display = 'none';
-                    const drawerAdmin = document.getElementById('drawer-admin-link');
-                    if (drawerAdmin) drawerAdmin.style.display = 'none';
                     const greeting = document.getElementById('student-greeting');
                     if (greeting) greeting.textContent = `👋 مرحباً بك في مسار بايثون`;
                 }

@@ -88,20 +88,8 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             self.path = "/templates/index.html"
             return super().do_GET()
 
-        # Serve Admin Dashboard View
-        if path == "/admin" or path == "/admin.html":
-            self.path = "/templates/admin.html"
-            return super().do_GET()
-
         current_user = self.get_current_user()
         session_token = self.get_session_token()
-
-        # Admin Dashboard Statistics (Protected: Admin role required)
-        if path == "/api/admin/stats":
-            if not current_user or current_user.get("role") != "admin":
-                return self.send_json({"error": "غير مصرح (Forbidden): هذا القسم مخصص لمدير المنصة فقط"}, status=403)
-            stats = db.get_admin_dashboard_stats()
-            return self.send_json(stats)
 
         # 1. Auth Me Endpoint + CSRF token provisioning
         if path == "/api/auth/me":
