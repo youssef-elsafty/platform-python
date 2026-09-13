@@ -26,6 +26,9 @@
                     </button>
                     <div id="user-pill" style="display: none; align-items: center; gap: 6px;">
                         <span id="user-name-display" style="font-weight: 800; color: #f59e0b; font-size: 0.8rem;"></span>
+                        <button id="btn-open-admin" onclick="openAdminModal()" class="btn-action" style="display: none; padding: 4px 10px; font-size: 0.72rem; background: linear-gradient(135deg, #f59e0b, #d97706); border:none; box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);">
+                            👑 لوحة الإدارة
+                        </button>
                         <button onclick="logoutUser()" class="btn-secondary btn-danger" style="padding: 4px 8px; font-size: 0.72rem;">خروج</button>
                     </div>
                 </div>
@@ -58,6 +61,9 @@
                 <a href="#lesson-view-anchor" onclick="closeMobileDrawer()" class="drawer-link">
                     <span>📖</span> الدرس الحالي والمهام
                 </a>
+                <button id="drawer-admin-btn" onclick="openAdminModal(); closeMobileDrawer();" class="drawer-link" style="display: none; color: #f59e0b; text-align: right; width: 100%;">
+                    <span>👑</span> لوحة تحكم المشرف (Admin)
+                </button>
                 <button onclick="resetProgress(); closeMobileDrawer();" class="drawer-link" style="color: #f87171; text-align: right; width: 100%;">
                     <span>🔄</span> إعادة ضبط التقدم
                 </button>
@@ -282,6 +288,102 @@
         </div>
     </div>
 
+    <!-- In-Page Admin Dashboard Modal -->
+    <div id="admin-modal" class="modal-backdrop hidden" style="align-items: center; justify-content: center; padding: 16px;">
+        <div class="modal-content" style="max-width: 950px; width: 100%; border-radius: 16px; border-bottom: 1px solid var(--border-color); max-height: 88vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.3rem;">👑</span>
+                    <div>
+                        <h4 style="color: #fff; font-weight: 800; margin: 0;">لوحة تحكم المشرف (Admin Control)</h4>
+                        <span style="font-size: 0.72rem; color: #9ca3af;">مراقبة الطلاب • إدارة الحسابات • حذف المستخدمين</span>
+                    </div>
+                </div>
+                <button onclick="closeAdminModal()" style="background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+
+            <div class="modal-body" style="padding: 16px; overflow-y: auto;">
+                <!-- Admin Stat Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 1.8rem;">👥</span>
+                        <div>
+                            <div id="admin-stat-users" style="font-size: 1.4rem; font-weight: 800; color: #fff;">0</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">إجمالي المسجلين</div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 1.8rem; color: #34d399;">🎯</span>
+                        <div>
+                            <div id="admin-stat-tasks" style="font-size: 1.4rem; font-weight: 800; color: #34d399;">0</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">مهام تم حلها</div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 1.8rem; color: #fbbf24;">🏆</span>
+                        <div>
+                            <div id="admin-stat-lessons" style="font-size: 1.4rem; font-weight: 800; color: #fbbf24;">0</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">دروس مكتملة</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Students Management Table -->
+                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
+                    <div style="padding: 10px 14px; background: rgba(17, 24, 39, 0.9); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700; color: #fff; font-size: 0.85rem;">🎓 قائمة الطلاب وإدارة الحسابات:</span>
+                        <button onclick="fetchAdminStats()" class="btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;">🔄 تحديث</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.82rem;">
+                            <thead>
+                                <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
+                                    <th style="padding: 10px;">المستخدم</th>
+                                    <th style="padding: 10px;">البريد</th>
+                                    <th style="padding: 10px;">الرتبة</th>
+                                    <th style="padding: 10px;">المهام المحلولة</th>
+                                    <th style="padding: 10px;">آخر ظهور</th>
+                                    <th style="padding: 10px; text-align: center;">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-students-tbody">
+                                <tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 16px;">جاري التحميل...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Login History -->
+                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+                    <div style="padding: 10px 14px; background: rgba(17, 24, 39, 0.9); border-bottom: 1px solid var(--border-color);">
+                        <span style="font-weight: 700; color: #60a5fa; font-size: 0.85rem;">🕒 آخر نشاط تسجيل دخول (Live):</span>
+                    </div>
+                    <div style="overflow-x: auto; max-height: 180px;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
+                            <thead>
+                                <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8;">
+                                    <th style="padding: 8px 10px;">المستخدم</th>
+                                    <th style="padding: 8px 10px;">عنوان IP</th>
+                                    <th style="padding: 8px 10px;">الوقت والتاريخ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-logins-tbody">
+                                <tr><td colspan="3" style="text-align: center; color: #9ca3af; padding: 12px;">جاري تحميل السجلات...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer" style="padding: 10px 16px;">
+                <button onclick="closeAdminModal()" class="btn-secondary" style="width: 100%;">
+                    إغلاق لوحة الإدارة
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Mobile Fixed Bottom Navigation Bar -->
     <nav class="bottom-nav">
         <a href="#dashboard-anchor" class="bottom-nav-item active">
@@ -415,15 +517,25 @@
                 const userPill = document.getElementById('user-pill');
                 const nameDisplay = document.getElementById('user-name-display');
 
+                const btnOpenAdmin = document.getElementById('btn-open-admin');
+                const drawerAdminBtn = document.getElementById('drawer-admin-btn');
+
                 if (platformState.user) {
                     openAuthBtn.style.display = 'none';
                     userPill.style.display = 'flex';
                     nameDisplay.textContent = '👤 ' + platformState.user.username;
+                    const isAdmin = platformState.user.role === 'admin';
+                    if (btnOpenAdmin) btnOpenAdmin.style.display = isAdmin ? 'inline-block' : 'none';
+                    if (drawerAdminBtn) drawerAdminBtn.style.display = isAdmin ? 'block' : 'none';
+
                     const greeting = document.getElementById('student-greeting');
                     if (greeting) greeting.textContent = `👋 مرحباً بك يا ${platformState.user.username}`;
                 } else {
                     openAuthBtn.style.display = 'block';
                     userPill.style.display = 'none';
+                    if (btnOpenAdmin) btnOpenAdmin.style.display = 'none';
+                    if (drawerAdminBtn) drawerAdminBtn.style.display = 'none';
+
                     const greeting = document.getElementById('student-greeting');
                     if (greeting) greeting.textContent = `👋 مرحباً بك في مسار بايثون`;
                 }
@@ -735,6 +847,98 @@
                 alert("تم إعادة ضبط التقدم بنجاح!");
             } catch (e) {
                 alert("خطأ في إعادة الضبط");
+            }
+        }
+
+        // ================= IN-PAGE ADMIN DASHBOARD =================
+        function openAdminModal() {
+            document.getElementById('admin-modal').classList.remove('hidden');
+            fetchAdminStats();
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-modal').classList.add('hidden');
+        }
+
+        async function fetchAdminStats() {
+            const studentsTbody = document.getElementById('admin-students-tbody');
+            const loginsTbody = document.getElementById('admin-logins-tbody');
+
+            try {
+                const res = await fetch('/api/admin/stats');
+                if (!res.ok) {
+                    studentsTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #f87171; padding: 14px;">❌ غير مصرح أو حدث خطأ في تحميل البيانات</td></tr>';
+                    return;
+                }
+                const data = await res.json();
+                
+                // Render Numbers
+                document.getElementById('admin-stat-users').textContent = data.total_users || 0;
+                document.getElementById('admin-stat-tasks').textContent = data.total_tasks_solved || 0;
+                document.getElementById('admin-stat-lessons').textContent = data.total_lessons_completed || 0;
+
+                // Render Students
+                if (!data.students || data.students.length === 0) {
+                    studentsTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 14px;">لا يوجد طلاب مسجلين حتى الآن</td></tr>';
+                } else {
+                    studentsTbody.innerHTML = data.students.map(s => {
+                        const isMainAdmin = s.role === 'admin';
+                        const deleteBtn = isMainAdmin 
+                            ? '<span style="color: #9ca3af; font-size: 0.75rem;">—</span>' 
+                            : `<button onclick="deleteStudentUser('${s.id}', '${s.username}')" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; cursor: pointer;">🗑️ حذف</button>`;
+
+                        return `
+                            <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.5);">
+                                <td style="padding: 8px 10px; font-weight: 700; color: #fff;">${s.username}</td>
+                                <td style="padding: 8px 10px; color: #94a3b8;">${s.email}</td>
+                                <td style="padding: 8px 10px;">
+                                    <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; ${isMainAdmin ? 'background: rgba(245, 158, 11, 0.2); color: #fbbf24;' : 'background: rgba(59, 130, 246, 0.2); color: #60a5fa;'}">
+                                        ${isMainAdmin ? '👑 مشرف' : 'طالب'}
+                                    </span>
+                                </td>
+                                <td style="padding: 8px 10px; color: #34d399; font-weight: 700;">${s.solved_tasks} مهام</td>
+                                <td style="padding: 8px 10px; color: #cbd5e1; font-size: 0.75rem;">${s.last_login ? s.last_login : 'لم يسجل'}</td>
+                                <td style="padding: 8px 10px; text-align: center;">${deleteBtn}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                // Render Logins
+                if (!data.recent_logins || data.recent_logins.length === 0) {
+                    loginsTbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #9ca3af; padding: 10px;">لا توجد سجلات دخول</td></tr>';
+                } else {
+                    loginsTbody.innerHTML = data.recent_logins.map(l => `
+                        <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4);">
+                            <td style="padding: 6px 10px; color: #93c5fd; font-weight: 700;">${l.username}</td>
+                            <td style="padding: 6px 10px; font-family: monospace; color: #94a3b8;">${l.ip_address || '127.0.0.1'}</td>
+                            <td style="padding: 6px 10px; color: #e2e8f0;">${l.login_time}</td>
+                        </tr>
+                    `).join('');
+                }
+
+            } catch (err) {
+                console.error("Error loading admin stats:", err);
+            }
+        }
+
+        async function deleteStudentUser(userId, username) {
+            if (!confirm(`هل أنت متأكد من رغبتك في حذف المستخدم "${username}" وجميع تقدمه نهائياً؟`)) return;
+            try {
+                const res = await fetch('/api/admin/delete-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✓ ${data.message}`);
+                    fetchAdminStats();
+                } else {
+                    alert(`❌ ${data.error || 'خطأ في الحذف'}`);
+                }
+            } catch (err) {
+                alert("خطأ في الاتصال بالخادم");
             }
         }
 

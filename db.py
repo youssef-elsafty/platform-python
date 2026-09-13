@@ -334,3 +334,20 @@ def get_admin_dashboard_stats():
             "recent_logins": recent_logins,
             "students": students
         }
+
+def delete_user(user_id: str):
+    if not user_id:
+        return {"success": False, "error": "معرف المستخدم مطلوب"}
+    with get_db() as db:
+        user = db.fetchone("SELECT id, role, username FROM users WHERE id = ?", (user_id,))
+        if not user:
+            return {"success": False, "error": "المستخدم غير موجود"}
+        if user["role"] == "admin":
+            return {"success": False, "error": "لا يمكن حذف حساب المشرف الرئيسي"}
+        
+        db.execute("DELETE FROM completed_tasks WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM completed_lessons WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM login_logs WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        return {"success": True, "message": f"تم حذف المستخدم {user['username']} بنجاح"}

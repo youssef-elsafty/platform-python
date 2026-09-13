@@ -98,6 +98,13 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
         current_user = self.get_current_user()
         session_token = self.get_session_token()
 
+        # Admin Dashboard Statistics
+        if path == "/api/admin/stats":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            stats = db.get_admin_dashboard_stats()
+            return self.send_json(stats)
+
         # 1. Auth Me Endpoint + CSRF token provisioning
         if path == "/api/auth/me":
             if current_user:
@@ -232,9 +239,18 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             return self.send_json({"success": True}, status=200, set_cookie=cookie)
 
         # 6. Authorization Guard: Endpoints requiring active login
-        if path in ("/api/submit-task", "/api/reset"):
+        if path in ("/api/submit-task", "/api/reset", "/api/admin/delete-user"):
             if not current_user:
                 return self.send_json({"error": "غير مصرح (Unauthorized): يرجى تسجيل الدخول أولاً للمتابعة."}, status=401)
+
+        # Admin: Delete User
+        if path == "/api/admin/delete-user":
+            if current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            user_to_delete = str(body_data.get("user_id", "")).strip()
+            res = db.delete_user(user_to_delete)
+            status_code = 200 if res["success"] else 400
+            return self.send_json(res, status=status_code)
 
         # Reset Progress
         if path == "/api/reset":
