@@ -88,6 +88,13 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             self.path = "/templates/index.html"
             return super().do_GET()
 
+        # Graceful redirect for removed admin dashboard
+        if path in ("/admin", "/admin.html"):
+            self.send_response(302)
+            self.send_header("Location", "/")
+            self.end_headers()
+            return
+
         current_user = self.get_current_user()
         session_token = self.get_session_token()
 
