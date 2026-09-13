@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import urllib.parse
@@ -14,7 +14,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-PORT = 8080
+PORT = int(os.environ.get("PORT", 8080))
 
 class PythonLearningHandler(SimpleHTTPRequestHandler):
     def end_headers(self):
