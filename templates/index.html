@@ -8,50 +8,129 @@
 </head>
 <body>
 
-    <!-- Header -->
+    <!-- Compact Sticky Header -->
     <header>
         <div class="header-inner">
             <div class="logo-group">
                 <div class="logo-badge">🐍</div>
                 <div class="title-group">
                     <h1>مسار إتقان بايثون</h1>
-                    <p>تعلّم تطبيقي • لا انتقال للدرس التالي إلا بعد إتقان السابق والمهام التراكمية</p>
+                    <p>تعلّم تطبيقي • فتح الدروس المشروط والمهام التراكمية</p>
                 </div>
             </div>
+            
             <div class="header-actions">
                 <div id="user-info-area" style="display: flex; align-items: center; gap: 8px;">
-                    <button id="btn-open-auth" onclick="openAuthModal()" class="btn-action" style="padding: 6px 14px; font-size: 0.8rem;">
-                        👤 تسجيل الدخول / حساب جديد
+                    <button id="btn-open-auth" onclick="openAuthModal()" class="btn-action" style="padding: 6px 12px; font-size: 0.78rem;">
+                        👤 دخول / تسجيل
                     </button>
-                    <div id="user-pill" style="display: none; align-items: center; gap: 8px;">
-                        <span id="user-name-display" style="font-weight: 700; color: #f59e0b; font-size: 0.85rem;"></span>
-                        <a id="btn-admin-link" href="/admin" class="btn-action" style="display: none; padding: 4px 10px; font-size: 0.75rem; text-decoration: none; background: linear-gradient(135deg, #f59e0b, #d97706);">
-                            👑 لوحة الإدمن
+                    <div id="user-pill" style="display: none; align-items: center; gap: 6px;">
+                        <span id="user-name-display" style="font-weight: 800; color: #f59e0b; font-size: 0.8rem;"></span>
+                        <a id="btn-admin-link" href="/admin" class="btn-action" style="display: none; padding: 4px 8px; font-size: 0.72rem; text-decoration: none; background: linear-gradient(135deg, #f59e0b, #d97706);">
+                            👑 إدمن
                         </a>
-                        <button onclick="logoutUser()" class="btn-secondary btn-danger" style="padding: 4px 10px; font-size: 0.75rem;">خروج</button>
+                        <button onclick="logoutUser()" class="btn-secondary btn-danger" style="padding: 4px 8px; font-size: 0.72rem;">خروج</button>
                     </div>
                 </div>
-                <button onclick="resetProgress()" class="btn-secondary btn-danger">
-                    🔄 إعادة ضبط التقدم
+
+                <!-- Mobile Drawer Hamburger -->
+                <button onclick="toggleMobileDrawer()" class="btn-icon-toggle" aria-label="فتح القائمة">
+                    ☰
                 </button>
-                <div id="overall-badge" class="badge-status">
-                    جاري التحميل...
-                </div>
             </div>
         </div>
     </header>
 
+    <!-- Mobile Drawer Off-canvas -->
+    <div id="mobile-drawer-backdrop" class="mobile-nav-backdrop" onclick="closeMobileDrawer()">
+        <div class="mobile-drawer" onclick="event.stopPropagation()">
+            <div class="drawer-header">
+                <div class="drawer-title">
+                    <span>🐍</span> مسار إتقان بايثون
+                </div>
+                <button onclick="closeMobileDrawer()" style="background:none; border:none; color: var(--text-muted); font-size: 1.5rem; cursor:pointer;">✕</button>
+            </div>
+            
+            <div class="drawer-links">
+                <a href="#dashboard-anchor" onclick="closeMobileDrawer()" class="drawer-link active">
+                    <span>📊</span> لوحة تقدمي
+                </a>
+                <a href="#lessons-anchor" onclick="closeMobileDrawer()" class="drawer-link">
+                    <span>🗺️</span> خارطة الدروس
+                </a>
+                <a href="#lesson-view-anchor" onclick="closeMobileDrawer()" class="drawer-link">
+                    <span>📖</span> الدرس الحالي والمهام
+                </a>
+                <a id="drawer-admin-link" href="/admin" class="drawer-link" style="display: none; color: #f59e0b;">
+                    <span>👑</span> لوحة تحكم المشرف (Admin)
+                </a>
+                <button onclick="resetProgress(); closeMobileDrawer();" class="drawer-link" style="color: #f87171; text-align: right; width: 100%;">
+                    <span>🔄</span> إعادة ضبط التقدم
+                </button>
+            </div>
+
+            <div style="padding-top: 14px; border-top: 1px solid var(--border-subtle); text-align: center;">
+                <span class="badge-status" id="drawer-progress-badge">التقدم: 0%</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Container -->
     <div class="container">
         
+        <!-- Mobile & Desktop Student Dashboard Overview Card -->
+        <div id="dashboard-anchor" class="student-dashboard-banner">
+            <div class="dashboard-user-greeting">
+                <div>
+                    <h2 id="student-greeting" style="color: #fff; font-weight: 800;">👋 مرحباً بك في مسار بايثون</h2>
+                    <p style="color: var(--text-muted); font-size: 0.8rem;">تعلّم بالحل العملي • لن يُفتح الدرس التالي إلا بإتقان السابق والمراجعات</p>
+                </div>
+                <span id="student-level-badge" class="student-badge-level">مبتدئ 🚀</span>
+            </div>
+
+            <div style="margin-top: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: #94a3b8;">نسبة الإنجاز في المسار:</span>
+                    <span id="overall-badge" style="font-weight: 800; color: #38bdf8; font-size: 0.85rem;">0%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon">📚</div>
+                    <div>
+                        <div id="stat-completed-lessons" class="metric-val">0</div>
+                        <div class="metric-lbl">دروس مكتملة</div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon" style="color: #34d399;">🎯</div>
+                    <div>
+                        <div id="progress-stat" class="metric-val">0 / 0</div>
+                        <div class="metric-lbl">مهام تم حلها</div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon" style="color: #fbbf24;">⚡</div>
+                    <div>
+                        <div id="stat-xp" class="metric-val">0</div>
+                        <div class="metric-lbl">نقاط XP</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside id="lessons-anchor" class="sidebar">
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">
                         <span>🗺️</span> خارطة الدروس والمهام
                     </div>
-                    <span id="progress-stat" class="stat-pill">0 / 0</span>
+                    <span id="roadmap-counter" class="stat-pill">0 دروس</span>
                 </div>
                 <div id="lesson-list" class="lesson-list">
                     <!-- Lessons loaded via JS -->
@@ -60,7 +139,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main id="lesson-view-anchor" class="main-content">
             
             <!-- Creative Intro Banner for Eng. Youssef -->
             <div class="hero-signature">
@@ -161,15 +240,17 @@
             </div>
 
             <div class="modal-footer">
-                <button onclick="closeEditor()" class="btn-secondary">إلغاء</button>
-                <div style="display: flex; gap: 10px;">
+                <div class="modal-footer-actions">
                     <button id="btn-run-code" onclick="testRunCode()" class="btn-secondary">
-                        ▶️ تجربة الكود فقط
+                        ▶️ تجربة الكود
                     </button>
                     <button id="btn-submit-task" onclick="submitTaskCode()" class="btn-action">
-                        🚀 إرسال وتحقق للاجتياز
+                        🚀 إرسال وتحقق
                     </button>
                 </div>
+                <button onclick="closeEditor()" class="btn-secondary" style="color: var(--text-dim);">
+                    إغلاق المحرر
+                </button>
             </div>
         </div>
     </div>
@@ -200,18 +281,60 @@
                 </div>
                 <div id="auth-error-msg" style="display: none; color: #f87171; font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3);"></div>
             </div>
-            <div class="modal-footer">
-                <button onclick="closeAuthModal()" class="btn-secondary">إلغاء</button>
-                <button id="btn-submit-auth" onclick="submitAuth()" class="btn-action" style="flex: 1; max-width: 140px;">تسجيل الدخول</button>
+            <div class="modal-footer" style="flex-direction: row;">
+                <button onclick="closeAuthModal()" class="btn-secondary" style="flex: 1;">إلغاء</button>
+                <button id="btn-submit-auth" onclick="submitAuth()" class="btn-action" style="flex: 2;">تسجيل الدخول</button>
             </div>
         </div>
     </div>
+
+    <!-- Mobile Fixed Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <a href="#dashboard-anchor" class="bottom-nav-item active">
+            <span class="nav-icon">📊</span>
+            <span>التقدم</span>
+        </a>
+        <a href="#lessons-anchor" class="bottom-nav-item">
+            <span class="nav-icon">🗺️</span>
+            <span>الدروس</span>
+        </a>
+        <a href="#lesson-view-anchor" class="bottom-nav-item">
+            <span class="nav-icon">📖</span>
+            <span>الدرس</span>
+        </a>
+        <a href="javascript:void(0)" onclick="handleMobileAccountClick()" class="bottom-nav-item">
+            <span class="nav-icon">👤</span>
+            <span>حسابي</span>
+        </a>
+    </nav>
 
     <script>
         let currentLessonId = null;
         let currentActiveTask = null;
         let platformState = null;
         let authMode = "login"; // "login" or "register"
+
+        function toggleMobileDrawer() {
+            const drawer = document.getElementById('mobile-drawer-backdrop');
+            if (drawer) {
+                drawer.classList.toggle('active');
+            }
+        }
+
+        function closeMobileDrawer() {
+            const drawer = document.getElementById('mobile-drawer-backdrop');
+            if (drawer) {
+                drawer.classList.remove('active');
+            }
+        }
+
+        function handleMobileAccountClick() {
+            if (platformState && platformState.user) {
+                toggleMobileDrawer();
+            } else {
+                openAuthModal();
+            }
+        }
 
         function openAuthModal() {
             document.getElementById('auth-modal').classList.remove('hidden');
@@ -305,10 +428,18 @@
                     userPill.style.display = 'flex';
                     nameDisplay.textContent = '👤 ' + platformState.user.username;
                     adminBtn.style.display = (platformState.user.role === 'admin') ? 'inline-block' : 'none';
+                    const drawerAdmin = document.getElementById('drawer-admin-link');
+                    if (drawerAdmin) drawerAdmin.style.display = (platformState.user.role === 'admin') ? 'flex' : 'none';
+                    const greeting = document.getElementById('student-greeting');
+                    if (greeting) greeting.textContent = `👋 مرحباً بك يا ${platformState.user.username}`;
                 } else {
                     openAuthBtn.style.display = 'block';
                     userPill.style.display = 'none';
                     adminBtn.style.display = 'none';
+                    const drawerAdmin = document.getElementById('drawer-admin-link');
+                    if (drawerAdmin) drawerAdmin.style.display = 'none';
+                    const greeting = document.getElementById('student-greeting');
+                    if (greeting) greeting.textContent = `👋 مرحباً بك في مسار بايثون`;
                 }
 
                 renderRoadmap();
@@ -328,10 +459,12 @@
 
             let totalTasks = 0;
             let totalDone = 0;
+            let completedLessonsCount = 0;
 
             platformState.lessons.forEach(l => {
                 totalTasks += l.total_tasks;
                 totalDone += l.completed_tasks;
+                if (l.completed) completedLessonsCount++;
 
                 const card = document.createElement('div');
                 const isSelected = l.id === currentLessonId;
@@ -355,6 +488,11 @@
                 card.onclick = () => {
                     if (l.unlocked) {
                         loadLesson(l.id);
+                        // On small mobile screens, smoothly scroll to lesson content view
+                        if (window.innerWidth <= 768) {
+                            const lessonTarget = document.getElementById('lesson-view-anchor');
+                            if (lessonTarget) lessonTarget.scrollIntoView({ behavior: 'smooth' });
+                        }
                     } else {
                         alert("🔒 هذا الدرس مقفل حالياً!\nيجب عليك إكمال جميع مهام ومراجعات الدرس السابق أولاً لتتمكن من فتحه.");
                     }
@@ -371,8 +509,46 @@
                 list.appendChild(card);
             });
 
-            document.getElementById('progress-stat').textContent = `${totalDone} / ${totalTasks} مهام منجزة`;
-            document.getElementById('overall-badge').textContent = `التقدم الإجمالي: ${Math.round((totalDone / (totalTasks || 1)) * 100)}%`;
+            const percent = Math.round((totalDone / (totalTasks || 1)) * 100);
+            const xpPoints = totalDone * 100;
+
+            const progressStat = document.getElementById('progress-stat');
+            if (progressStat) progressStat.textContent = `${totalDone} / ${totalTasks}`;
+
+            const overallBadge = document.getElementById('overall-badge');
+            if (overallBadge) overallBadge.textContent = `${percent}%`;
+
+            const progressBar = document.getElementById('progress-bar-fill');
+            if (progressBar) progressBar.style.width = `${percent}%`;
+
+            const drawerProg = document.getElementById('drawer-progress-badge');
+            if (drawerProg) drawerProg.textContent = `التقدم: ${percent}% (${totalDone}/${totalTasks})`;
+
+            const statCompleted = document.getElementById('stat-completed-lessons');
+            if (statCompleted) statCompleted.textContent = completedLessonsCount;
+
+            const statXp = document.getElementById('stat-xp');
+            if (statXp) statXp.textContent = `${xpPoints} XP`;
+
+            const roadmapCount = document.getElementById('roadmap-counter');
+            if (roadmapCount) roadmapCount.textContent = `${platformState.lessons.length} دروس`;
+
+            const levelBadge = document.getElementById('student-level-badge');
+            if (levelBadge) {
+                if (percent >= 100) {
+                    levelBadge.textContent = 'خبير بايثون 👑';
+                    levelBadge.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                } else if (percent >= 60) {
+                    levelBadge.textContent = 'متقدم ⚡';
+                    levelBadge.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
+                } else if (percent >= 30) {
+                    levelBadge.textContent = 'متوسط 🎯';
+                    levelBadge.style.background = 'linear-gradient(135deg, #f59e0b, #b45309)';
+                } else {
+                    levelBadge.textContent = 'مبتدئ 🚀';
+                    levelBadge.style.background = 'linear-gradient(135deg, #6366f1, #4f46e5)';
+                }
+            }
         }
 
         async function loadLesson(lessonId) {
