@@ -1,9 +1,8 @@
 ﻿import os
 import sys
-import subprocess
-import tempfile
 import json
 import glob
+from runner import run_isolated_code
 from db import (
     init_db, mark_task_done, mark_lesson_done,
     get_completed_task_ids, get_completed_lesson_ids, reset_all_progress
@@ -37,11 +36,9 @@ def get_platform_state():
     completed_lessons = get_completed_lesson_ids()
     
     lesson_statuses = []
-    first_unlocked_set = False
 
     for idx, lesson in enumerate(lessons):
         lid = lesson["id"]
-        # All tasks in this lesson: lesson_tasks + cumulative_tasks
         all_tasks = lesson.get("tasks", []) + lesson.get("cumulative_tasks", [])
         total_tasks_count = len(all_tasks)
         done_tasks_count = sum(1 for t in all_tasks if t["id"] in completed_tasks)
@@ -51,9 +48,6 @@ def get_platform_state():
             mark_lesson_done(lid)
             completed_lessons.add(lid)
 
-        # Unlock rule:
-        # Lesson 1 is always unlocked.
-        # Lesson N is unlocked if Lesson N-1 is completed!
         if idx == 0:
             unlocked = True
         else:
@@ -78,47 +72,9 @@ def get_platform_state():
         "completed_lessons": list(completed_lessons)
     }
 
-def execute_code_safely(code, timeout=5):
-    """Executes python code in a separate process with a strict timeout"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8-sig") as temp_file:
-        temp_file.write(code)
-        temp_path = temp_file.name
-
-    try:
-        proc = subprocess.run(
-            [sys.executable, temp_path],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            encoding="utf-8-sig",
-            errors="replace"
-        )
-        return {
-            "success": proc.returncode == 0,
-            "stdout": proc.stdout,
-            "stderr": proc.stderr,
-            "exit_code": proc.returncode
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "success": False,
-            "stdout": "",
-            "stderr": "انتهى الوقت المحدد لتنفيذ الكود (Timeout: 5s). تأكد من عدم وجود حلقات تكرار لا نهائية (Infinite Loop).",
-            "exit_code": -1
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "stdout": "",
-            "stderr": str(e),
-            "exit_code": -1
-        }
-    finally:
-        if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except:
-                pass
+def execute_code_safely(code, timeout=4):
+    """Delegates to the secure, isolated runner sandbox."""
+    return run_isolated_code(code, timeout=timeout)
 
 def evaluate_task(task, submitted_code):
     run_result = execute_code_safely(submitted_code)
@@ -128,7 +84,7 @@ def evaluate_task(task, submitted_code):
             "passed": False,
             "output": run_result["stdout"],
             "error": run_result["stderr"],
-            "feedback": "حدث خطأ أثناء تشغيل الكود (Syntax or Runtime Error)."
+            "feedback": "حدث خطأ أثناء تشغيل الكود (Error or Security Violation)."
         }
 
     actual_output = run_result["stdout"].strip()
