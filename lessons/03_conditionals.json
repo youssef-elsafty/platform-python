@@ -1,0 +1,55 @@
+﻿{
+  "id": "lesson_03",
+  "order": 3,
+  "title": "3. الجمل الشرطية واتخاذ القرارات (if / elif / else)",
+  "category": "التحكم بالبرنامج",
+  "description": "تعلم كيفية جعل برنامج بايثون يتخذ قرارات ذكية بناءً على شروط محددة.",
+  "content": "### الجمل الشرطية (Conditionals) 🚦\n\nتتيح لك `if` تنفيذ كود معين فقط إذا تحقق الشرط:\n\n```python\ngrade = 85\n\nif grade >= 90:\n    print(\"ممتاز\")\nelif grade >= 75:\n    print(\"جيد جداً\")\nelse:\n    print(\"راسب\")\n```\n\n- انتبه دائماً إلى **المسافة البادئة (Indentation)**، بايثون تعتمد على المسافات لتحديد بلوك الكود.",
+  "tasks": [
+    {
+      "id": "l3_t1",
+      "type": "lesson_task",
+      "title": "المهمة 1: فحص قيمة المتغير",
+      "instruction": "لديك متغير `num = 10`. اكتب شرطاً يتحقق إذا كان `num > 5` ليطبع `Greater`، وإلا يطبع `Smaller`.",
+      "starter_code": "num = 10\n# اكتب جملة if هنا\n",
+      "test_cases": [
+        {
+          "type": "exact_output",
+          "expected": "Greater"
+        }
+      ],
+      "hint": "if num > 5:\n    print(\"Greater\")\nelse:\n    print(\"Smaller\")"
+    },
+    {
+      "id": "l3_t2",
+      "type": "lesson_task",
+      "title": "المهمة 2: فحص كلمة المرور",
+      "instruction": "أنشئ متغير `password = \"secret123\"`. اكتب شرطاً: إذا كانت كلمة المرور تطابق `\"secret123\"` يطبع `Access Granted` وإلا يطبع `Access Denied`.",
+      "starter_code": "password = \"secret123\"\n# اكتب التحقق هنا\n",
+      "test_cases": [
+        {
+          "type": "exact_output",
+          "expected": "Access Granted"
+        }
+      ],
+      "hint": "if password == \"secret123\":\n    print(\"Access Granted\")"
+    }
+  ],
+  "cumulative_tasks": [
+    {
+      "id": "l3_c1",
+      "type": "cumulative_task",
+      "from_lesson": "lesson_01 + lesson_02",
+      "title": "تحدي مراجعة تراكمية شاملة: حساب وتقييم الميزانية",
+      "instruction": "اجمع بين مهارات الدرس الأول (الطباعة والعمليات)، الدرس الثاني (المتغيرات)، والدرس الثالث (الشروط):\n1. عرف متغير `budget = 500` ومتغير `expense = 350`.\n2. احسب المتبقي في متغير `remaining = budget - expense`.\n3. إذا كان `remaining >= 100` اطبع `Safe`، وإلا اطبع `Danger`.",
+      "starter_code": "# التحدي التراكمي: ميزانية وشروط وطباعة\n",
+      "test_cases": [
+        {
+          "type": "exact_output",
+          "expected": "Safe"
+        }
+      ],
+      "hint": "budget = 500\nexpense = 350\nremaining = budget - expense\nif remaining >= 100:\n    print(\"Safe\")\nelse:\n    print(\"Danger\")"
+    }
+  ]
+}

@@ -1,0 +1,442 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة بايثون التفاعلية | Python Mastery</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-inner">
+            <div class="logo-group">
+                <div class="logo-badge">🐍</div>
+                <div class="title-group">
+                    <h1>مسار إتقان بايثون</h1>
+                    <p>تعلّم تطبيقي • لا انتقال للدرس التالي إلا بعد إتقان السابق والمهام التراكمية</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button onclick="resetProgress()" class="btn-secondary btn-danger">
+                    🔄 إعادة ضبط التقدم
+                </button>
+                <div id="overall-badge" class="badge-status">
+                    جاري التحميل...
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>🗺️</span> خارطة الدروس والمهام
+                    </div>
+                    <span id="progress-stat" class="stat-pill">0 / 0</span>
+                </div>
+                <div id="lesson-list" class="lesson-list">
+                    <!-- Lessons loaded via JS -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- Creative Intro Banner for Eng. Youssef -->
+            <div class="hero-signature">
+                <div class="hero-signature-text">
+                    <span>⚡</span>
+                    <div>
+                        <span>كود متقن، منصة ذكية، وتجربة استثنائية.. </span>
+                        <span class="hero-signature-tag">"وده يدلّ إنّ بشمهندس يوسف، بشمهندس مش عادي" 🚀</span>
+                    </div>
+                </div>
+                <span style="font-size: 1.5rem;">👑</span>
+            </div>
+
+            <!-- Current Lesson Card -->
+            <div class="card">
+                <div class="lesson-header-top">
+                    <div>
+                        <span id="lesson-category" class="category-tag"></span>
+                        <h2 id="lesson-title" class="lesson-main-title">اختر درساً للبدء</h2>
+                    </div>
+                    <div id="lesson-status-tag" class="status-badge"></div>
+                </div>
+
+                <div id="lesson-content" class="lesson-body">
+                    اختر درساً من القائمة الجانبية لبدء الشرح وحل المهام التفاعلية.
+                </div>
+            </div>
+
+            <!-- Direct Tasks -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title" style="color: #fbbf24;">
+                        <span>🎯</span> مهام الدرس المباشرة (Direct Tasks)
+                    </div>
+                    <span style="font-size: 0.8rem; color: #9ca3af;">تطبيق على ما درسته للتو</span>
+                </div>
+                <div id="tasks-container">
+                    <!-- Direct Tasks -->
+                </div>
+            </div>
+
+            <!-- Cumulative Review Tasks -->
+            <div id="cumulative-section" class="card" style="border-color: rgba(99, 102, 241, 0.4); background: linear-gradient(135deg, rgba(30, 27, 75, 0.4), rgba(17, 24, 39, 0.9));">
+                <div class="card-header">
+                    <div class="card-title" style="color: #a5b4fc;">
+                        <span>🧠</span> مهام المراجعة التراكمية (Cumulative Review Tasks)
+                    </div>
+                    <span class="task-badge-cumulative">شاملة للدروس السابقة</span>
+                </div>
+                <p style="font-size: 0.8rem; color: #9ca3af; margin-bottom: 12px;">تتحداك هذه المهام في الجمع بين الدروس السابقة ومفاهيم الدرس الحالي لضمان عدم نسيان الأساسيات.</p>
+                <div id="cumulative-container">
+                    <!-- Cumulative Tasks -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Code Editor Modal -->
+    <div id="code-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="modal-task-badge" class="task-badge-direct">تمرين</span>
+                    <h4 id="modal-task-title" style="color: #fff; font-weight: 700;">محرر حل المهمة</h4>
+                </div>
+                <button onclick="closeEditor()" style="background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="task-prompt-box">
+                    <div style="font-weight: 700; color: #fff; margin-bottom: 4px;">المطلوب:</div>
+                    <div id="modal-task-instruction" style="color: #d1d5db; white-space: pre-line;"></div>
+                    <div id="modal-hint-box" style="margin-top: 10px; display: none; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; color: #fcd34d;"></div>
+                </div>
+
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: #9ca3af;">محرر كود بايثون (Python 3):</span>
+                        <button onclick="toggleHint()" style="background:none; border:none; color: #fbbf24; cursor: pointer; font-size: 0.8rem; text-decoration: underline;">💡 إظهار تلميح</button>
+                    </div>
+                    <textarea id="code-editor" class="code-textarea" rows="8" spellcheck="false"></textarea>
+                </div>
+
+                <!-- Result Box With Creative Punchline -->
+                <div id="result-box" class="result-box" style="display: none;">
+                    <div class="youssef-punchline">
+                        <span style="font-size: 1.3rem;">🔥</span>
+                        <div class="youssef-punchline-text">
+                            "وده يدلّ إنّ بشمهندس يوسف، بشمهندس مش عادي" ✨
+                        </div>
+                    </div>
+                    <div id="result-title" style="font-weight: 700; font-size: 0.85rem; margin-bottom: 4px; direction: rtl;"></div>
+                    <div id="result-feedback" style="font-size: 0.9rem; margin-bottom: 8px; direction: rtl; font-weight: 600;"></div>
+                    <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 4px;">Terminal Output:</div>
+                    <pre id="result-output" style="background: rgba(0,0,0,0.5); padding: 8px; border-radius: 6px; font-size: 0.8rem; color: #e5e7eb; overflow-x: auto; white-space: pre-wrap; margin:0;"></pre>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button onclick="closeEditor()" class="btn-secondary">إلغاء</button>
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-run-code" onclick="testRunCode()" class="btn-secondary">
+                        ▶️ تجربة الكود فقط
+                    </button>
+                    <button id="btn-submit-task" onclick="submitTaskCode()" class="btn-action">
+                        🚀 إرسال وتحقق للاجتياز
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLessonId = null;
+        let currentActiveTask = null;
+        let platformState = null;
+
+        async function fetchPlatformState() {
+            try {
+                const res = await fetch('/api/status');
+                platformState = await res.json();
+                renderRoadmap();
+                if (!currentLessonId && platformState.lessons.length > 0) {
+                    loadLesson(platformState.lessons[0].id);
+                } else if (currentLessonId) {
+                    loadLesson(currentLessonId);
+                }
+            } catch (err) {
+                console.error("Error fetching state:", err);
+            }
+        }
+
+        function renderRoadmap() {
+            const list = document.getElementById('lesson-list');
+            list.innerHTML = '';
+
+            let totalTasks = 0;
+            let totalDone = 0;
+
+            platformState.lessons.forEach(l => {
+                totalTasks += l.total_tasks;
+                totalDone += l.completed_tasks;
+
+                const card = document.createElement('div');
+                const isSelected = l.id === currentLessonId;
+
+                let stateBadge = '';
+                let extraClasses = '';
+
+                if (!l.unlocked) {
+                    extraClasses = 'locked';
+                    stateBadge = '<span class="status-badge badge-locked">🔒 مقفل</span>';
+                } else if (l.completed) {
+                    extraClasses = 'completed';
+                    stateBadge = '<span class="status-badge badge-done">✓ مكتمل</span>';
+                } else {
+                    stateBadge = `<span class="status-badge badge-progress">${l.completed_tasks}/${l.total_tasks} مهام</span>`;
+                }
+
+                if (isSelected) extraClasses += ' selected';
+
+                card.className = `lesson-item ${extraClasses}`;
+                card.onclick = () => {
+                    if (l.unlocked) {
+                        loadLesson(l.id);
+                    } else {
+                        alert("🔒 هذا الدرس مقفل حالياً!\nيجب عليك إكمال جميع مهام ومراجعات الدرس السابق أولاً لتتمكن من فتحه.");
+                    }
+                };
+
+                card.innerHTML = `
+                    <div class="lesson-item-header">
+                        <span class="category-tag">${l.category}</span>
+                        ${stateBadge}
+                    </div>
+                    <div class="lesson-item-title">${l.title}</div>
+                    <div class="lesson-item-desc">${l.description}</div>
+                `;
+                list.appendChild(card);
+            });
+
+            document.getElementById('progress-stat').textContent = `${totalDone} / ${totalTasks} مهام منجزة`;
+            document.getElementById('overall-badge').textContent = `التقدم الإجمالي: ${Math.round((totalDone / (totalTasks || 1)) * 100)}%`;
+        }
+
+        async function loadLesson(lessonId) {
+            currentLessonId = lessonId;
+            try {
+                const res = await fetch(`/api/lesson/${lessonId}`);
+                if (!res.ok) {
+                    const data = await res.json();
+                    alert(data.error || "خطأ في تحميل الدرس");
+                    return;
+                }
+                const lesson = await res.json();
+                renderLessonView(lesson);
+                renderRoadmap();
+            } catch (err) {
+                console.error("Error loading lesson:", err);
+            }
+        }
+
+        function renderLessonView(lesson) {
+            document.getElementById('lesson-title').textContent = lesson.title;
+            document.getElementById('lesson-category').textContent = lesson.category;
+            
+            let formattedContent = lesson.content
+                .replace(/### (.*)/g, '<h3>$1</h3>')
+                .replace(/#### (.*)/g, '<h4>$1</h4>')
+                .replace(/```python([\s\S]*?)```/g, '<pre>$1</pre>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/\n\n/g, '<br/>');
+
+            document.getElementById('lesson-content').innerHTML = formattedContent;
+
+            const tag = document.getElementById('lesson-status-tag');
+            if (lesson.is_completed) {
+                tag.className = 'status-badge badge-done';
+                tag.textContent = '🎉 اجتزت هذا الدرس بالكامل';
+            } else {
+                tag.className = 'status-badge badge-progress';
+                tag.textContent = '⏳ بانتظار إكمال المهام والمراجعات';
+            }
+
+            const tasksCont = document.getElementById('tasks-container');
+            tasksCont.innerHTML = '';
+            (lesson.tasks || []).forEach(t => {
+                tasksCont.appendChild(createTaskCard(t, lesson.id, false));
+            });
+
+            const cumSection = document.getElementById('cumulative-section');
+            const cumCont = document.getElementById('cumulative-container');
+            cumCont.innerHTML = '';
+
+            if (lesson.cumulative_tasks && lesson.cumulative_tasks.length > 0) {
+                cumSection.style.display = 'block';
+                lesson.cumulative_tasks.forEach(ct => {
+                    cumCont.appendChild(createTaskCard(ct, lesson.id, true));
+                });
+            } else {
+                cumSection.style.display = 'none';
+            }
+        }
+
+        function createTaskCard(task, lessonId, isCumulative) {
+            const card = document.createElement('div');
+            card.className = `task-card ${task.completed ? 'completed' : ''}`;
+            
+            const badge = isCumulative 
+                ? '<span class="task-badge-cumulative">مراجعة تراكمية شاملة</span>'
+                : '<span class="task-badge-direct">مهمة الدرس</span>';
+
+            const status = task.completed
+                ? '<span style="color:#34d399; font-weight:700; font-size:0.75rem;">✓ منجزة بنجاح</span>'
+                : '<span style="color:#9ca3af; font-size:0.75rem;">بانتظار الحل</span>';
+
+            card.innerHTML = `
+                <div class="task-info">
+                    <div class="task-header">
+                        ${badge}
+                        ${task.from_lesson ? `<span style="font-size:0.75rem; color:#9ca3af;">يشمل: ${task.from_lesson}</span>` : ''}
+                        ${status}
+                    </div>
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-desc">${task.instruction}</div>
+                </div>
+                <div>
+                    <button onclick='openEditor(${JSON.stringify(task)}, "${lessonId}")' class="btn-action ${task.completed ? 'btn-done' : ''}">
+                        ${task.completed ? 'تعديل الحل 📝' : 'حل المهمة 💻'}
+                    </button>
+                </div>
+            `;
+            return card;
+        }
+
+        function openEditor(task, lessonId) {
+            currentActiveTask = { task, lessonId };
+            document.getElementById('modal-task-title').textContent = task.title;
+            document.getElementById('modal-task-instruction').textContent = task.instruction;
+            document.getElementById('code-editor').value = task.starter_code || "# اكتب كود بايثون هنا\n";
+            
+            const hintBox = document.getElementById('modal-hint-box');
+            hintBox.textContent = "💡 تلميح: " + (task.hint || "لا يوجد تلميح متاح");
+            hintBox.style.display = 'none';
+
+            const resBox = document.getElementById('result-box');
+            resBox.style.display = 'none';
+
+            document.getElementById('code-modal').classList.remove('hidden');
+        }
+
+        function closeEditor() {
+            document.getElementById('code-modal').classList.add('hidden');
+        }
+
+        function toggleHint() {
+            const hintBox = document.getElementById('modal-hint-box');
+            hintBox.style.display = hintBox.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function testRunCode() {
+            const code = document.getElementById('code-editor').value;
+            const btn = document.getElementById('btn-run-code');
+            btn.disabled = true;
+            btn.innerText = 'جاري التشغيل...';
+
+            try {
+                const res = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await res.json();
+                showResult(data.success, data.stdout, data.stderr, "تم تشغيل الكود (تجريبي)");
+            } catch (err) {
+                alert("حدث خطأ في الاتصال بالخادم");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '▶️ تجربة الكود فقط';
+            }
+        }
+
+        async function submitTaskCode() {
+            if (!currentActiveTask) return;
+            const code = document.getElementById('code-editor').value;
+            const btn = document.getElementById('btn-submit-task');
+            btn.disabled = true;
+            btn.innerText = 'جاري التحقق...';
+
+            try {
+                const res = await fetch('/api/submit-task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lesson_id: currentActiveTask.lessonId,
+                        task_id: currentActiveTask.task.id,
+                        code: code
+                    })
+                });
+                const data = await res.json();
+                showResult(data.passed, data.output, data.error, data.feedback);
+
+                if (data.passed) {
+                    await fetchPlatformState();
+                    if (data.lesson_completed) {
+                        setTimeout(() => {
+                            alert("🎉 مبروك! لقد أكملت جميع مهام ومراجعات هذا الدرس بنجاح، وتم فتح الدرس التالي لك!\n\n'وده يدلّ إنّ بشمهندس يوسف، بشمهندس مش عادي' 😉🚀");
+                        }, 400);
+                    }
+                }
+            } catch (err) {
+                alert("حدث خطأ أثناء إرسال الحل");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '🚀 إرسال وتحقق للاجتياز';
+            }
+        }
+
+        function showResult(passed, output, error, feedback) {
+            const box = document.getElementById('result-box');
+            const title = document.getElementById('result-title');
+            const feedbackEl = document.getElementById('result-feedback');
+            const outputEl = document.getElementById('result-output');
+
+            box.style.display = 'block';
+            box.className = 'result-box ' + (passed ? 'pass' : 'fail');
+
+            title.style.color = passed ? '#34d399' : '#f87171';
+            title.textContent = passed ? '✓ تم الاجتياز بنجاح!' : '✕ لم يتم الاجتياز بعد';
+            feedbackEl.style.color = passed ? '#6ee7b7' : '#fca5a5';
+
+            feedbackEl.textContent = feedback || '';
+            outputEl.textContent = (error ? error + '\n' : '') + (output || '(لا توجد مخرجات مطبوعة)');
+        }
+
+        async function resetProgress() {
+            if (!confirm("هل أنت متأكد من رغبتك في إعادة ضبط جميع المهام والدروس والبدء من جديد؟")) return;
+            try {
+                await fetch('/api/reset', { method: 'POST' });
+                await fetchPlatformState();
+                alert("تم إعادة ضبط التقدم بنجاح!");
+            } catch (e) {
+                alert("خطأ في إعادة الضبط");
+            }
+        }
+
+        fetchPlatformState();
+    </script>
+</body>
+</html>

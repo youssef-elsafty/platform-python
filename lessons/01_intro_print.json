@@ -1,0 +1,39 @@
+﻿{
+  "id": "lesson_01",
+  "order": 1,
+  "title": "1. مقدمة في بايثون ودالة الطباعة (print)",
+  "category": "الأساسيات",
+  "description": "تعلم كيفية إخراج النصوص والأرقام باستخدام دالة print() وطريقة كتابة الكود الأول في بايثون.",
+  "content": "### مرحباً بك في بايثون! 👋\n\nبايثون لغة برمجة قوية وسهلة القراءة.\n\n#### 1. دالة `print()`\nتُستخدم دالة `print()` لإظهار المخرجات على الشاشة:\n\n```python\nprint(\"Hello, World!\")\nprint(100)\n```\n\n- النصوص يجب أن توضع دائماً بين علامات تنصيص `\"...\"` أو `'...'`.\n- الأرقام تُكتب مباشرة دون علامات تنصيص.",
+  "tasks": [
+    {
+      "id": "l1_t1",
+      "type": "lesson_task",
+      "title": "المهمة 1: طباعة الترحيب",
+      "instruction": "اكتب كود بايثون يطبع النص التالي تماماً:\n`Hello Python`",
+      "starter_code": "# اكتب كود الطباعة هنا\n",
+      "test_cases": [
+        {
+          "type": "exact_output",
+          "expected": "Hello Python"
+        }
+      ],
+      "hint": "استخدم print(\"Hello Python\")"
+    },
+    {
+      "id": "l1_t2",
+      "type": "lesson_task",
+      "title": "المهمة 2: طباعة رقم ونتيجة",
+      "instruction": "اكتب كود يطبع ناتج جمع الرقمين 25 و 15 مباشرة.",
+      "starter_code": "# اطبع ناتج جمع 25 + 15\n",
+      "test_cases": [
+        {
+          "type": "exact_output",
+          "expected": "40"
+        }
+      ],
+      "hint": "يمكنك كتابة print(25 + 15)"
+    }
+  ],
+  "cumulative_tasks": []
+}

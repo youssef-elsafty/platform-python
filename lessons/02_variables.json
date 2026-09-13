@@ -1,0 +1,55 @@
+﻿{
+  "id": "lesson_02",
+  "order": 2,
+  "title": "2. المتغيرات والأنواع البيانية (Variables & Data Types)",
+  "category": "الأساسيات",
+  "description": "تعلم كيفية تخزين البيانات في متغيرات واستخدام النصوص والأرقام.",
+  "content": "### المتغيرات في بايثون 📦\n\nالمتغير هو مكان في الذاكرة لتخزين قيمة معينة.\n\n```python\nname = \"Ahmed\"\nage = 25\nprice = 19.99\nis_active = True\n```\n\n- لا تحتاج لتحديد نوع المتغير مسبقاً، فبايثون تحدده تلقائياً.\n- يمكنك طباعة المتغيرات بتمريرها لدالة `print()`:\n```python\nprint(name)\nprint(\"العمر:\", age)\n```",
+  "tasks": [
+    {
+      "id": "l2_t1",
+      "type": "lesson_task",
+      "title": "المهمة 1: تعريف المتغيرات وطباعتها",
+      "instruction": "قم بإنشاء متغير باسم `score` وقيمته `100`، ثم قم بطباعة المتغير `score`.",
+      "starter_code": "# أنشئ المتغير score واطبعه\n",
+      "test_cases": [
+        {
+          "type": "exact_output",
+          "expected": "100"
+        }
+      ],
+      "hint": "اكتب score = 100 ثم print(score)"
+    },
+    {
+      "id": "l2_t2",
+      "type": "lesson_task",
+      "title": "المهمة 2: دمج النصوص والمتغيرات",
+      "instruction": "أنشئ متغير باسم `city` بقيمة `Cairo`، واطبع ناتج دمج النص: `Welcome to Cairo`",
+      "starter_code": "# أنشئ متغير city واطبع الترحيب\n",
+      "test_cases": [
+        {
+          "type": "exact_output",
+          "expected": "Welcome to Cairo"
+        }
+      ],
+      "hint": "city = \"Cairo\"\nprint(\"Welcome to \" + city)"
+    }
+  ],
+  "cumulative_tasks": [
+    {
+      "id": "l2_c1",
+      "type": "cumulative_task",
+      "from_lesson": "lesson_01",
+      "title": "تحدي مراجعة تراكمية: المتغيرات والعمليات الحسابية مع الطباعة",
+      "instruction": "اجمع ما تعلمته في الدرس الأول (الطباعة والعمليات) والدرس الثاني (المتغيرات):\nقم بإنشاء متغيرين `x = 30` و `y = 70`، ثم احسب مجموعهما في متغير ثالث `total`، واطبع قيمة `total`.",
+      "starter_code": "# تحدي مراجعة: عرف المتغيرات واطبع المجموع الكلي\n",
+      "test_cases": [
+        {
+          "type": "exact_output",
+          "expected": "100"
+        }
+      ],
+      "hint": "x = 30\ny = 70\ntotal = x + y\nprint(total)"
+    }
+  ]
+}
