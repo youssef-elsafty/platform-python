@@ -5,7 +5,7 @@ import glob
 from runner import run_isolated_code
 from db import (
     init_db, mark_task_done, mark_lesson_done,
-    get_completed_task_ids, get_completed_lesson_ids, reset_all_progress
+    get_completed_task_ids, get_completed_lesson_ids, reset_user_progress
 )
 
 LESSONS_DIR = "lessons"
@@ -30,10 +30,10 @@ def get_lesson_by_id(lesson_id):
             return l
     return None
 
-def get_platform_state():
+def get_platform_state(user_id=None):
     lessons = load_all_lessons()
-    completed_tasks = get_completed_task_ids()
-    completed_lessons = get_completed_lesson_ids()
+    completed_tasks = get_completed_task_ids(user_id) if user_id else set()
+    completed_lessons = get_completed_lesson_ids(user_id) if user_id else set()
     
     lesson_statuses = []
 
@@ -44,8 +44,8 @@ def get_platform_state():
         done_tasks_count = sum(1 for t in all_tasks if t["id"] in completed_tasks)
         
         is_completed = (total_tasks_count > 0 and done_tasks_count == total_tasks_count)
-        if is_completed and lid not in completed_lessons:
-            mark_lesson_done(lid)
+        if is_completed and user_id and lid not in completed_lessons:
+            mark_lesson_done(user_id, lid)
             completed_lessons.add(lid)
 
         if idx == 0:
@@ -73,7 +73,6 @@ def get_platform_state():
     }
 
 def execute_code_safely(code, timeout=4):
-    """Delegates to the secure, isolated runner sandbox."""
     return run_isolated_code(code, timeout=timeout)
 
 def evaluate_task(task, submitted_code):

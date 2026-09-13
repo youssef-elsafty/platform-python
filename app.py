@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import json
 import urllib.parse
@@ -6,7 +6,6 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import db
 import engine
 
-# Ensure UTF-8 output in Windows terminal
 if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -17,36 +16,51 @@ if sys.platform == "win32":
 PORT = int(os.environ.get("PORT", 8080))
 
 class PythonLearningHandler(SimpleHTTPRequestHandler):
-    def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        super().end_headers()
+    def get_session_token(self):
+        cookie_header = self.headers.get("Cookie", "")
+        for item in cookie_header.split(";"):
+            item = item.strip()
+            if item.startswith("session="):
+                return item.split("=", 1)[1]
+        return None
 
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.end_headers()
+    def get_current_user(self):
+        token = self.get_session_token()
+        if token:
+            return db.get_user_by_session(token)
+        return None
 
-    def send_json(self, data, status=200):
+    def send_json(self, data, status=200, set_cookie=None):
         response_bytes = json.dumps(data, ensure_ascii=False).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(response_bytes)))
-        self.end_headers()
+        if set_cookie:
+            self.send_header('Set-Cookie', set_cookie)
+        super().end_headers()
         self.wfile.write(response_bytes)
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
-        # Serve static frontend home
         if path == "/" or path == "/index.html":
             self.path = "/templates/index.html"
             return super().do_GET()
 
-        # API endpoints
+        current_user = self.get_current_user()
+
+        # Auth state check
+        if path == "/api/auth/me":
+            if current_user:
+                return self.send_json({"authenticated": True, "user": current_user})
+            return self.send_json({"authenticated": False, "user": None})
+
+        # Platform status for logged in user (or guest)
         if path == "/api/status":
-            state = engine.get_platform_state()
+            uid = current_user["id"] if current_user else None
+            state = engine.get_platform_state(user_id=uid)
+            state["user"] = current_user
             return self.send_json(state)
 
         if path.startswith("/api/lesson/"):
@@ -55,7 +69,8 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             if not lesson:
                 return self.send_json({"error": "الدرس غير موجود"}, status=404)
             
-            state = engine.get_platform_state()
+            uid = current_user["id"] if current_user else None
+            state = engine.get_platform_state(user_id=uid)
             lesson_status = next((l for l in state["lessons"] if l["id"] == lesson_id), None)
             
             if not lesson_status or not lesson_status["unlocked"]:
@@ -97,15 +112,56 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
         except Exception:
             body_data = {}
 
+        current_user = self.get_current_user()
+
+        # Auth: Register
+        if path == "/api/auth/register":
+            username = body_data.get("username", "")
+            email = body_data.get("email", "")
+            password = body_data.get("password", "")
+            if len(username) < 3 or len(password) < 6:
+                return self.send_json({"success": False, "error": "اسم المستخدم 3 أحرف على الأقل، وكلمة المرور 6 على الأقل"}, status=400)
+            
+            reg_res = db.create_user(username, email, password)
+            if not reg_res["success"]:
+                return self.send_json(reg_res, status=400)
+            
+            # Auto-login after registration
+            login_res = db.authenticate_user(username, password)
+            cookie = f"session={login_res['session_token']}; Path=/; HttpOnly; SameSite=Lax"
+            return self.send_json(login_res, status=200, set_cookie=cookie)
+
+        # Auth: Login
+        if path == "/api/auth/login":
+            username_or_email = body_data.get("username_or_email", "")
+            password = body_data.get("password", "")
+            login_res = db.authenticate_user(username_or_email, password)
+            if not login_res["success"]:
+                return self.send_json(login_res, status=401)
+            
+            cookie = f"session={login_res['session_token']}; Path=/; HttpOnly; SameSite=Lax"
+            return self.send_json(login_res, status=200, set_cookie=cookie)
+
+        # Auth: Logout
+        if path == "/api/auth/logout":
+            token = self.get_session_token()
+            db.delete_session(token)
+            cookie = "session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+            return self.send_json({"success": True}, status=200, set_cookie=cookie)
+
+        # Reset Progress for current authenticated user
         if path == "/api/reset":
-            db.reset_all_progress()
+            if current_user:
+                db.reset_user_progress(current_user["id"])
             return self.send_json({"success": True, "message": "تم إعادة ضبط التقدم بنجاح"})
 
+        # Run code (Test only)
         if path == "/api/run":
             code = body_data.get("code", "")
             result = engine.execute_code_safely(code)
             return self.send_json(result)
 
+        # Submit task
         if path == "/api/submit-task":
             lesson_id = body_data.get("lesson_id")
             task_id = body_data.get("task_id")
@@ -123,8 +179,10 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
 
             eval_res = engine.evaluate_task(target_task, code)
             if eval_res["passed"]:
-                db.mark_task_done(task_id, lesson_id)
-                state = engine.get_platform_state()
+                uid = current_user["id"] if current_user else None
+                if uid:
+                    db.mark_task_done(uid, task_id, lesson_id)
+                state = engine.get_platform_state(user_id=uid)
                 lesson_status = next((l for l in state["lessons"] if l["id"] == lesson_id), None)
                 eval_res["lesson_completed"] = lesson_status["completed"] if lesson_status else False
             else:

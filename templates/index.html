@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -19,6 +19,15 @@
                 </div>
             </div>
             <div class="header-actions">
+                <div id="user-info-area" style="display: flex; align-items: center; gap: 8px;">
+                    <button id="btn-open-auth" onclick="openAuthModal()" class="btn-action" style="padding: 6px 14px; font-size: 0.8rem;">
+                        👤 تسجيل الدخول / حساب جديد
+                    </button>
+                    <div id="user-pill" style="display: none; align-items: center; gap: 8px;">
+                        <span id="user-name-display" style="font-weight: 700; color: #f59e0b; font-size: 0.85rem;"></span>
+                        <button onclick="logoutUser()" class="btn-secondary btn-danger" style="padding: 4px 10px; font-size: 0.75rem;">خروج</button>
+                    </div>
+                </div>
                 <button onclick="resetProgress()" class="btn-secondary btn-danger">
                     🔄 إعادة ضبط التقدم
                 </button>
@@ -162,15 +171,139 @@
         </div>
     </div>
 
+    <!-- Auth Modal (Register / Login) -->
+    <div id="auth-modal" class="modal-backdrop hidden">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h4 id="auth-modal-title" style="color: #fff; font-weight: 700;">تسجيل الدخول</h4>
+                <button onclick="closeAuthModal()" style="background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+            <div class="modal-body" style="gap: 12px;">
+                <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                    <button id="tab-login" onclick="switchAuthTab('login')" class="btn-action" style="flex: 1; font-size: 0.85rem; padding: 6px;">دخول</button>
+                    <button id="tab-register" onclick="switchAuthTab('register')" class="btn-secondary" style="flex: 1; font-size: 0.85rem; padding: 6px;">حساب جديد</button>
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">اسم المستخدم:</label>
+                    <input id="auth-username" type="text" class="code-textarea" style="min-height: 42px; height: 42px; padding: 8px 12px; font-family: inherit; font-size: 0.9rem;" placeholder="مثال: youssef">
+                </div>
+                <div id="auth-email-group" style="display: none;">
+                    <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">البريد الإلكتروني:</label>
+                    <input id="auth-email" type="email" class="code-textarea" style="min-height: 42px; height: 42px; padding: 8px 12px; font-family: inherit; font-size: 0.9rem;" placeholder="example@mail.com">
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">كلمة المرور:</label>
+                    <input id="auth-password" type="password" class="code-textarea" style="min-height: 42px; height: 42px; padding: 8px 12px; font-family: inherit; font-size: 0.9rem;" placeholder="••••••••">
+                </div>
+                <div id="auth-error-msg" style="display: none; color: #f87171; font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3);"></div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeAuthModal()" class="btn-secondary">إلغاء</button>
+                <button id="btn-submit-auth" onclick="submitAuth()" class="btn-action" style="flex: 1; max-width: 140px;">تسجيل الدخول</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentLessonId = null;
         let currentActiveTask = null;
         let platformState = null;
+        let authMode = "login"; // "login" or "register"
+
+        function openAuthModal() {
+            document.getElementById('auth-modal').classList.remove('hidden');
+            document.getElementById('auth-error-msg').style.display = 'none';
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        function switchAuthTab(mode) {
+            authMode = mode;
+            const tabLogin = document.getElementById('tab-login');
+            const tabReg = document.getElementById('tab-register');
+            const emailGroup = document.getElementById('auth-email-group');
+            const title = document.getElementById('auth-modal-title');
+            const submitBtn = document.getElementById('btn-submit-auth');
+            document.getElementById('auth-error-msg').style.display = 'none';
+
+            if (mode === 'login') {
+                tabLogin.className = 'btn-action';
+                tabReg.className = 'btn-secondary';
+                emailGroup.style.display = 'none';
+                title.textContent = 'تسجيل الدخول';
+                submitBtn.textContent = 'تسجيل الدخول';
+            } else {
+                tabLogin.className = 'btn-secondary';
+                tabReg.className = 'btn-action';
+                emailGroup.style.display = 'block';
+                title.textContent = 'إنشاء حساب جديد';
+                submitBtn.textContent = 'إنشاء حساب';
+            }
+        }
+
+        async function submitAuth() {
+            const username = document.getElementById('auth-username').value.trim();
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const errorBox = document.getElementById('auth-error-msg');
+            const submitBtn = document.getElementById('btn-submit-auth');
+
+            errorBox.style.display = 'none';
+            submitBtn.disabled = true;
+
+            const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+            const payload = authMode === 'login' 
+                ? { username_or_email: username, password: password }
+                : { username: username, email: email, password: password };
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    errorBox.textContent = data.error || 'حدث خطأ في المصادقة';
+                    errorBox.style.display = 'block';
+                } else {
+                    closeAuthModal();
+                    await fetchPlatformState();
+                }
+            } catch (err) {
+                errorBox.textContent = 'خطأ في الاتصال بالخادم';
+                errorBox.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function logoutUser() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            await fetchPlatformState();
+        }
 
         async function fetchPlatformState() {
             try {
                 const res = await fetch('/api/status');
                 platformState = await res.json();
+
+                // Update user header state
+                const openAuthBtn = document.getElementById('btn-open-auth');
+                const userPill = document.getElementById('user-pill');
+                const nameDisplay = document.getElementById('user-name-display');
+
+                if (platformState.user) {
+                    openAuthBtn.style.display = 'none';
+                    userPill.style.display = 'flex';
+                    nameDisplay.textContent = '👤 ' + platformState.user.username;
+                } else {
+                    openAuthBtn.style.display = 'block';
+                    userPill.style.display = 'none';
+                }
+
                 renderRoadmap();
                 if (!currentLessonId && platformState.lessons.length > 0) {
                     loadLesson(platformState.lessons[0].id);

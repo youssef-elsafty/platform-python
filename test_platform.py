@@ -6,7 +6,8 @@ import engine
 class TestPlatform(unittest.TestCase):
     def setUp(self):
         db.init_db()
-        db.reset_all_progress()
+        self.test_user_id = "test_platform_runner_user"
+        db.reset_user_progress(self.test_user_id)
 
     def test_lessons_loading(self):
         lessons = engine.load_all_lessons()
@@ -15,7 +16,7 @@ class TestPlatform(unittest.TestCase):
         self.assertEqual(lessons[1]["id"], "lesson_02")
 
     def test_lesson_gating(self):
-        state = engine.get_platform_state()
+        state = engine.get_platform_state(user_id=self.test_user_id)
         l1 = next(l for l in state["lessons"] if l["id"] == "lesson_01")
         l2 = next(l for l in state["lessons"] if l["id"] == "lesson_02")
         
@@ -23,13 +24,13 @@ class TestPlatform(unittest.TestCase):
         self.assertTrue(l1["unlocked"])
         self.assertFalse(l2["unlocked"])
 
-        # Solve Lesson 1 tasks
+        # Solve Lesson 1 tasks for this user
         lesson1_data = engine.get_lesson_by_id("lesson_01")
         for task in lesson1_data["tasks"]:
-            db.mark_task_done(task["id"], "lesson_01")
+            db.mark_task_done(self.test_user_id, task["id"], "lesson_01")
 
         # Re-check state: Lesson 2 should now be unlocked!
-        new_state = engine.get_platform_state()
+        new_state = engine.get_platform_state(user_id=self.test_user_id)
         new_l2 = next(l for l in new_state["lessons"] if l["id"] == "lesson_02")
         self.assertTrue(new_l2["unlocked"])
 
