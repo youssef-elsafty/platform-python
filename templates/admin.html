@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -193,21 +193,72 @@
 
     </div>
 
+    <!-- Direct Admin Login Modal / Card if not logged in -->
+    <div id="admin-auth-overlay" class="modal-backdrop hidden">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h4 style="color: #fff; font-weight: 700;">تسجيل دخول الإدمن 👑</h4>
+            </div>
+            <div class="modal-body" style="gap: 12px;">
+                <p style="color: #9ca3af; font-size: 0.85rem;">يرجى إدخال بيانات حساب المشرف للمتابعة:</p>
+                <div>
+                    <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">اسم المستخدم:</label>
+                    <input id="admin-user-input" type="text" value="youssef" class="code-textarea" style="min-height: 42px; height: 42px; padding: 8px 12px; font-family: inherit; font-size: 0.9rem;">
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">كلمة المرور:</label>
+                    <input id="admin-pass-input" type="password" value="admin123" class="code-textarea" style="min-height: 42px; height: 42px; padding: 8px 12px; font-family: inherit; font-size: 0.9rem;">
+                </div>
+                <div id="admin-login-error" style="display: none; color: #f87171; font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3);"></div>
+            </div>
+            <div class="modal-footer">
+                <a href="/" class="btn-secondary" style="text-decoration: none;">الرئيسية</a>
+                <button onclick="submitAdminDirectLogin()" class="btn-action" style="flex: 1; max-width: 140px;">دخول اللوحة</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         async function loadDashboardData() {
             try {
                 const res = await fetch('/api/admin/stats');
                 if (res.status === 401 || res.status === 403) {
-                    alert("غير مصرح لك بالدخول! هذه اللوحة مخصصة للأدمن فقط.");
-                    window.location.href = "/";
+                    document.getElementById('admin-auth-overlay').classList.remove('hidden');
                     return;
                 }
+                document.getElementById('admin-auth-overlay').classList.add('hidden');
                 const data = await res.json();
                 renderStats(data);
                 renderStudents(data.students || []);
                 renderLogins(data.recent_logins || []);
             } catch (err) {
                 console.error("Error loading admin stats:", err);
+            }
+        }
+
+        async function submitAdminDirectLogin() {
+            const u = document.getElementById('admin-user-input').value.trim();
+            const p = document.getElementById('admin-pass-input').value;
+            const errBox = document.getElementById('admin-login-error');
+            errBox.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username_or_email: u, password: p })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    errBox.textContent = data.error || 'خطأ في تسجيل الدخول';
+                    errBox.style.display = 'block';
+                } else {
+                    document.getElementById('admin-auth-overlay').classList.add('hidden');
+                    loadDashboardData();
+                }
+            } catch (e) {
+                errBox.textContent = 'خطأ في الاتصال بالخادم';
+                errBox.style.display = 'block';
             }
         }
 
