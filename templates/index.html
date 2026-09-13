@@ -85,7 +85,12 @@
                     <h2 id="student-greeting" style="color: #fff; font-weight: 800;">👋 مرحباً بك في مسار بايثون</h2>
                     <p style="color: var(--text-muted); font-size: 0.8rem;">تعلّم بالحل العملي • لن يُفتح الدرس التالي إلا بإتقان السابق والمراجعات</p>
                 </div>
-                <span id="student-level-badge" class="student-badge-level">مبتدئ 🚀</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button id="banner-admin-btn" onclick="openAdminModal()" class="btn-action" style="display: none; padding: 6px 14px; font-size: 0.85rem; font-weight: 800; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; box-shadow: 0 0 14px rgba(245, 158, 11, 0.5); cursor: pointer; border-radius: 8px;">
+                        👑 لوحة الإدارة (Admin)
+                    </button>
+                    <span id="student-level-badge" class="student-badge-level">مبتدئ 🚀</span>
+                </div>
             </div>
 
             <div style="margin-top: 4px;">
@@ -519,6 +524,7 @@
 
                 const btnOpenAdmin = document.getElementById('btn-open-admin');
                 const drawerAdminBtn = document.getElementById('drawer-admin-btn');
+                const bannerAdminBtn = document.getElementById('banner-admin-btn');
 
                 if (platformState.user) {
                     openAuthBtn.style.display = 'none';
@@ -527,6 +533,7 @@
                     const isAdmin = platformState.user.role === 'admin';
                     if (btnOpenAdmin) btnOpenAdmin.style.display = isAdmin ? 'inline-block' : 'none';
                     if (drawerAdminBtn) drawerAdminBtn.style.display = isAdmin ? 'block' : 'none';
+                    if (bannerAdminBtn) bannerAdminBtn.style.display = isAdmin ? 'inline-block' : 'none';
 
                     const greeting = document.getElementById('student-greeting');
                     if (greeting) greeting.textContent = `👋 مرحباً بك يا ${platformState.user.username}`;
@@ -535,6 +542,7 @@
                     userPill.style.display = 'none';
                     if (btnOpenAdmin) btnOpenAdmin.style.display = 'none';
                     if (drawerAdminBtn) drawerAdminBtn.style.display = 'none';
+                    if (bannerAdminBtn) bannerAdminBtn.style.display = 'none';
 
                     const greeting = document.getElementById('student-greeting');
                     if (greeting) greeting.textContent = `👋 مرحباً بك في مسار بايثون`;
