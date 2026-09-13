@@ -82,6 +82,17 @@
             border-radius: 6px;
             font-size: 0.75rem;
         }
+        #admin-auth-overlay {
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 16px;
+        }
+        #admin-auth-overlay .modal-content {
+            border-radius: 16px !important;
+            border-bottom: 1px solid var(--border-color) !important;
+            max-width: 420px !important;
+            width: 100% !important;
+        }
     </style>
 </head>
 <body>
@@ -220,19 +231,36 @@
 
     <script>
         async function loadDashboardData() {
+            const studentsTbody = document.getElementById('students-table-body');
+            const loginsTbody = document.getElementById('logins-table-body');
+            
             try {
                 const res = await fetch('/api/admin/stats');
                 if (res.status === 401 || res.status === 403) {
                     document.getElementById('admin-auth-overlay').classList.remove('hidden');
+                    studentsTbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #fbbf24; padding: 20px;">🔒 يتطلب تسجيل الدخول بحساب المشرف (Admin) لعرض البيانات.</td></tr>';
+                    loginsTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #fbbf24; padding: 20px;">🔒 يتطلب صلاحية المشرف لعرض السجلات.</td></tr>';
                     return;
                 }
+                
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    const msg = errData.error || `خطأ في الخادم (${res.status})`;
+                    studentsTbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #f87171; padding: 20px;">❌ ${msg}</td></tr>`;
+                    loginsTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #f87171; padding: 20px;">❌ ${msg}</td></tr>`;
+                    return;
+                }
+
                 document.getElementById('admin-auth-overlay').classList.add('hidden');
                 const data = await res.json();
+                console.log("Admin stats loaded successfully:", data);
                 renderStats(data);
                 renderStudents(data.students || []);
                 renderLogins(data.recent_logins || []);
             } catch (err) {
                 console.error("Error loading admin stats:", err);
+                studentsTbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #f87171; padding: 20px;">❌ تعذر الاتصال بالخادم. يرجى التأكد من تشغيل السيرفر وتحديث الصفحة.</td></tr>';
+                loginsTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #f87171; padding: 20px;">❌ تعذر الاتصال بالخادم.</td></tr>';
             }
         }
 
@@ -251,6 +279,9 @@
                 const data = await res.json();
                 if (!res.ok || !data.success) {
                     errBox.textContent = data.error || 'خطأ في تسجيل الدخول';
+                    errBox.style.display = 'block';
+                } else if (data.user && data.user.role !== 'admin') {
+                    errBox.textContent = 'هذا الحساب ليس لديه صلاحية المشرف (Admin)';
                     errBox.style.display = 'block';
                 } else {
                     document.getElementById('admin-auth-overlay').classList.add('hidden');
