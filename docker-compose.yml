@@ -1,0 +1,31 @@
+﻿services:
+  # The Student Web Application (App, Lessons, Progress)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - RUNNER_URL=http://runner:8081
+      - RUNNER_SECRET=production_runner_secret_key_xyz
+    depends_on:
+      - runner
+
+  # The Isolated Runner Microservice
+  runner:
+    build:
+      context: ./runner_service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - RUNNER_SECRET=production_runner_secret_key_xyz
+      - MEMORY_LIMIT=128m
+      - CPU_LIMIT=0.5
+      - PIDS_LIMIT=16
+    volumes:
+      # Mount docker socket so runner service can spawn isolated single-run sandbox containers
+      - /var/run/docker.sock:/var/run/docker.sock

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Isolated and Secure Code Runner
 Enforces:
 1. Static Analysis (AST guard): Blocks dangerous modules (os, sys, subprocess, shutil, socket, etc.)
@@ -12,6 +12,13 @@ import subprocess
 import sys
 import tempfile
 import os
+import json
+import urllib.request
+import urllib.error
+
+RUNNER_URL = os.environ.get("RUNNER_URL", "").rstrip("/")
+RUNNER_SECRET = os.environ.get("RUNNER_SECRET", "dev_runner_secret_key_123")
+
 
 # Maximum permitted character length for submitted code
 MAX_CODE_LENGTH = 10000
@@ -87,9 +94,39 @@ def validate_code_safety(code: str):
 
     return True, ""
 
+def execute_via_remote_runner(code: str, timeout: int = 4):
+    """Calls the isolated Runner Microservice via HTTP API"""
+    target_url = f"{RUNNER_URL}/execute"
+    payload = json.dumps({"code": code, "timeout": timeout}).encode("utf-8")
+    
+    req = urllib.request.Request(
+        target_url,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "X-Runner-Secret": RUNNER_SECRET
+        },
+        method="POST"
+    )
+    
+    try:
+        with urllib.request.urlopen(req, timeout=timeout + 3) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            return result
+    except Exception as e:
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": f"خطأ في الاتصال بخدمة الساندبوكس: {str(e)}",
+            "exit_code": -1,
+            "mode": "remote_error"
+        }
+
 def run_isolated_code(code: str, timeout: int = 4):
     """
-    Executes Python code in a restricted isolated subprocess after passing AST security validation.
+    Executes Python code.
+    Checks AST safety first, then delegates to Remote Docker Runner if configured,
+    otherwise runs in local protected subprocess.
     """
     is_safe, security_msg = validate_code_safety(code)
     if not is_safe:
@@ -97,8 +134,13 @@ def run_isolated_code(code: str, timeout: int = 4):
             "success": False,
             "stdout": "",
             "stderr": f"⛔ تنبيه أمني (Security Sandbox):\n{security_msg}",
-            "exit_code": -1
+            "exit_code": -1,
+            "mode": "ast_rejected"
         }
+
+    # Production Mode: Delegate to Remote Docker Runner Service if configured
+    if RUNNER_URL:
+        return execute_via_remote_runner(code, timeout=timeout)
 
     # Restrict execution environment
     clean_env = {
