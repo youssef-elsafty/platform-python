@@ -46,7 +46,7 @@ class TestUsersAndProgress(unittest.TestCase):
     def test_contact_inquiries_logging_and_stats(self):
         uid_rand = uuid.uuid4().hex[:6]
         name = f"Inquirer_{uid_rand}"
-        phone = "01050333946"
+        phone = "01050333949"
         msg = "أرغب في الاستفسار عن كورس بايثون المتقدم"
 
         save_res = db.save_contact_inquiry(name, phone, msg)
