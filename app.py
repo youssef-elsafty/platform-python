@@ -286,7 +286,7 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             return self.send_json({"success": True}, status=200, set_cookie=cookie)
 
         # 6. Authorization Guard: Endpoints requiring active login
-        if path in ("/api/submit-task", "/api/reset", "/api/admin/delete-user", "/api/upload-submission"):
+        if path in ("/api/submit-task", "/api/reset", "/api/admin/delete-user", "/api/upload-submission", "/api/admin/create-task"):
             if not current_user:
                 return self.send_json({"error": "غير مصرح (Unauthorized): يرجى تسجيل الدخول أولاً للمتابعة."}, status=401)
 
@@ -415,6 +415,75 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 "saved_filename": saved_filename,
                 "extracted_code": extracted_code
             })
+
+        # Admin: Create New Lesson / Task
+        if path == "/api/admin/create-task":
+            if current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+
+            title = str(body_data.get("title", "")).strip()
+            track = str(body_data.get("track", "general")).strip()
+            category = str(body_data.get("category", "مقررات بايثون")).strip()
+            description = str(body_data.get("description", "")).strip()
+            content = str(body_data.get("content", "")).strip()
+            task_title = str(body_data.get("task_title", "")).strip()
+            instruction = str(body_data.get("instruction", "")).strip()
+            starter_code = str(body_data.get("starter_code", "# اكتب الكود هنا\n"))
+            expected_output = str(body_data.get("expected_output", "")).strip()
+            hint = str(body_data.get("hint", "")).strip()
+
+            if not title or not task_title or not instruction or not expected_output:
+                return self.send_json({"success": False, "error": "يرجى تعبئة جميع الحقول المطلوبة (عنوان الدرس، عنوان المهمة، التعليمات، والمخرجات المتوقعة)."}, status=400)
+
+            # Generate IDs and determine next order for this track
+            all_lessons = engine.load_all_lessons()
+            track_lessons = [l for l in all_lessons if l.get("track", "general") == track]
+            next_order = len(track_lessons) + 1
+            prefix = "uni" if track == "university" else "custom"
+            lesson_id = f"{prefix}_lesson_{int(uuid.uuid1().time)}"
+            task_id = f"{prefix}_task_{int(uuid.uuid1().time)}"
+
+            new_lesson_obj = {
+                "id": lesson_id,
+                "track": track,
+                "order": next_order,
+                "title": f"{next_order}. {title}",
+                "category": category,
+                "description": description or f"مهمة تطبيقية عملية في {title}",
+                "content": content or f"### {title}\n\nتطبيق عملي وتمرين مباشر وممتع تم نشره عبر المشرف.",
+                "tasks": [
+                    {
+                        "id": task_id,
+                        "type": "lesson_task",
+                        "title": task_title,
+                        "instruction": instruction,
+                        "starter_code": starter_code,
+                        "test_cases": [
+                            {
+                                "type": "exact_output",
+                                "expected": expected_output
+                            }
+                        ],
+                        "hint": hint or "ركز في المطلوب بدقة واطبع الناتج تماماً كما هو محدد."
+                    }
+                ],
+                "cumulative_tasks": []
+            }
+
+            lessons_dir = os.path.join(os.path.dirname(__file__), "lessons")
+            filename = f"{prefix}_{next_order:02d}_{int(uuid.uuid1().time)}.json"
+            filepath = os.path.join(lessons_dir, filename)
+
+            try:
+                with open(filepath, "w", encoding="utf-8") as f:
+                    json.dump(new_lesson_obj, f, ensure_ascii=False, indent=2)
+                return self.send_json({
+                    "success": True,
+                    "message": f"تم نشر الدرس والمهمة '{title}' بنجاح في { 'قسم الجامعات' if track == 'university' else 'المسار العام' }!",
+                    "lesson_id": lesson_id
+                })
+            except Exception as e:
+                return self.send_json({"success": False, "error": f"فشل حفظ المهمة: {str(e)}"}, status=500)
 
         return self.send_json({"error": "Endpoint not found"}, status=404)
 

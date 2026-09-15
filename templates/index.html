@@ -218,6 +218,30 @@
                 </div>
             </div>
 
+            <!-- Dedicated Assignment Upload Card for Students -->
+            <div id="assignment-upload-section" class="card" style="border-color: rgba(56, 189, 248, 0.4); background: linear-gradient(135deg, rgba(8, 47, 73, 0.4), rgba(17, 24, 39, 0.9)); margin-top: 16px;">
+                <div class="card-header">
+                    <div class="card-title" style="color: #38bdf8;">
+                        <span>📁</span> تسليم ورفع التكليفات والواجبات (Submit Assignments)
+                    </div>
+                    <span class="task-badge-direct" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">متاح للجميع 🚀</span>
+                </div>
+                <p style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">
+                    ارفع ملف الحل الخاص بك (.py, .ipynb, .pdf, .zip, .txt) براحتك في أي وقت ليتم مراجعته وتوثيقه في ملفك وسجلات المشرف.
+                </p>
+
+                <div style="display: flex; flex-direction: column; gap: 10px; background: rgba(3, 7, 18, 0.6); padding: 14px; border-radius: 12px; border: 1px dashed rgba(56, 189, 248, 0.4);">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <input type="text" id="custom-upload-notes" class="code-textarea" style="min-height: 38px; height: 38px; flex: 2; padding: 6px 12px; font-size: 0.82rem;" placeholder="ملاحظة أو اسم المهمة (اختياري - مثال: حل تكليف معمل 1)">
+                        <label for="direct-dropzone-input" class="btn-action" style="padding: 8px 16px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #0284c7, #0369a1); border: none;">
+                            <span>📤</span> اختر ملف لرفعه الآن
+                        </label>
+                        <input type="file" id="direct-dropzone-input" onchange="handleDirectFileUpload(event)" style="display: none;" accept=".py,.txt,.pdf,.zip,.ipynb">
+                    </div>
+                    <div id="direct-upload-status" style="display: none; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem;"></div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -332,136 +356,271 @@
                 <button onclick="closeAdminModal()" style="background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer;">✕</button>
             </div>
 
+            <!-- Admin Navigation Tabs -->
+            <div style="display: flex; gap: 8px; padding: 10px 16px; background: rgba(17, 24, 39, 0.8); border-bottom: 1px solid var(--border-color); overflow-x: auto; flex-wrap: wrap;">
+                <button id="adm-tab-btn-overview" onclick="switchAdminTab('overview')" class="btn-action" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
+                    📊 النظرة العامة والنشاط
+                </button>
+                <button id="adm-tab-btn-students" onclick="switchAdminTab('students')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
+                    👥 إدارة الطلاب (<span id="adm-badge-users">0</span>)
+                </button>
+                <button id="adm-tab-btn-submissions" onclick="switchAdminTab('submissions')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; color: #a78bfa; border-color: rgba(167, 139, 250, 0.4);">
+                    📁 ملفات وتكليفات الطلاب (<span id="adm-badge-files">0</span>)
+                </button>
+                <button id="adm-tab-btn-codes" onclick="switchAdminTab('codes')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; color: #34d399; border-color: rgba(52, 211, 153, 0.4);">
+                    💻 فاحص أكواد المهام المحلولة
+                </button>
+                <button id="adm-tab-btn-creator" onclick="switchAdminTab('creator')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; color: #fbbf24; border-color: rgba(251, 191, 36, 0.4);">
+                    ➕ نشر مهمة / درس جديد
+                </button>
+                <button id="adm-tab-btn-inquiries" onclick="switchAdminTab('inquiries')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
+                    📨 الرسائل والدعم (<span id="adm-badge-inquiries">0</span>)
+                </button>
+            </div>
+
             <div class="modal-body" style="padding: 16px; overflow-y: auto;">
-                <!-- Admin Stat Cards -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 1.8rem;">👥</span>
-                        <div>
-                            <div id="admin-stat-users" style="font-size: 1.4rem; font-weight: 800; color: #fff;">0</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">إجمالي المسجلين</div>
+                
+                <!-- TAB 1: OVERVIEW & LIVE LOGINS -->
+                <div id="adm-tab-overview">
+                    <!-- Admin Stat Cards -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                        <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 1.8rem;">👥</span>
+                            <div>
+                                <div id="admin-stat-users" style="font-size: 1.4rem; font-weight: 800; color: #fff;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">إجمالي المسجلين</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 1.8rem; color: #34d399;">🎯</span>
+                            <div>
+                                <div id="admin-stat-tasks" style="font-size: 1.4rem; font-weight: 800; color: #34d399;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">مهام تم حلها</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 1.8rem; color: #fbbf24;">🏆</span>
+                            <div>
+                                <div id="admin-stat-lessons" style="font-size: 1.4rem; font-weight: 800; color: #fbbf24;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">دروس مكتملة</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 1.8rem; color: #a78bfa;">📁</span>
+                            <div>
+                                <div id="admin-stat-submissions" style="font-size: 1.4rem; font-weight: 800; color: #a78bfa;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">ملفات تكليفات</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 1.8rem; color: #38bdf8;">📞</span>
+                            <div>
+                                <div id="admin-stat-inquiries" style="font-size: 1.4rem; font-weight: 800; color: #38bdf8;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">رسائل وتواصل</div>
+                            </div>
                         </div>
                     </div>
-                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 1.8rem; color: #34d399;">🎯</span>
-                        <div>
-                            <div id="admin-stat-tasks" style="font-size: 1.4rem; font-weight: 800; color: #34d399;">0</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">مهام تم حلها</div>
+
+                    <!-- Recent Login History -->
+                    <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+                        <div style="padding: 10px 14px; background: rgba(17, 24, 39, 0.9); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700; color: #60a5fa; font-size: 0.85rem;">🕒 آخر نشاط تسجيل دخول (Live Access):</span>
+                            <span style="font-size: 0.72rem; color: #94a3b8;">تحديث دوري ومستمر</span>
                         </div>
-                    </div>
-                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 1.8rem; color: #fbbf24;">🏆</span>
-                        <div>
-                            <div id="admin-stat-lessons" style="font-size: 1.4rem; font-weight: 800; color: #fbbf24;">0</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">دروس مكتملة</div>
-                        </div>
-                    </div>
-                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 1.8rem; color: #38bdf8;">📞</span>
-                        <div>
-                            <div id="admin-stat-inquiries" style="font-size: 1.4rem; font-weight: 800; color: #38bdf8;">0</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">طلبات الاتصال والدعم</div>
-                        </div>
-                    </div>
-                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 1.8rem; color: #a78bfa;">📁</span>
-                        <div>
-                            <div id="admin-stat-submissions" style="font-size: 1.4rem; font-weight: 800; color: #a78bfa;">0</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">ملفات تكليفات مرفوعة</div>
+                        <div style="overflow-x: auto; max-height: 260px;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
+                                <thead>
+                                    <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8;">
+                                        <th style="padding: 8px 10px;">المستخدم</th>
+                                        <th style="padding: 8px 10px;">عنوان IP</th>
+                                        <th style="padding: 8px 10px;">الوقت والتاريخ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-logins-tbody">
+                                    <tr><td colspan="3" style="text-align: center; color: #9ca3af; padding: 12px;">جاري تحميل السجلات...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Uploaded Assignments / Files Submissions Table -->
-                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
-                    <div style="padding: 10px 14px; background: rgba(88, 28, 135, 0.25); border-bottom: 1px solid rgba(167, 139, 250, 0.3); display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 700; color: #c4b5fd; font-size: 0.85rem;">📁 تكليفات وملفات الطلاب المرفوعة (Submissions):</span>
-                        <span style="font-size: 0.72rem; color: #94a3b8;">معاينة وتنزيل مباشر</span>
-                    </div>
-                    <div style="overflow-x: auto; max-height: 220px;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
-                            <thead>
-                                <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
-                                    <th style="padding: 8px 10px;">الطالب</th>
-                                    <th style="padding: 8px 10px;">اسم الملف</th>
-                                    <th style="padding: 8px 10px;">المهمة / الدرس</th>
-                                    <th style="padding: 8px 10px;">الحجم</th>
-                                    <th style="padding: 8px 10px;">تاريخ الرفع</th>
-                                    <th style="padding: 8px 10px; text-align: center;">تحميل / فتح</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-submissions-tbody">
-                                <tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد ملفات مرفوعة حتى الآن</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Students Management Table -->
-                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
-                    <div style="padding: 10px 14px; background: rgba(17, 24, 39, 0.9); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 700; color: #fff; font-size: 0.85rem;">🎓 قائمة الطلاب وإدارة الحسابات:</span>
-                        <button onclick="fetchAdminStats()" class="btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;">🔄 تحديث</button>
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.82rem;">
-                            <thead>
-                                <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
-                                    <th style="padding: 10px;">المستخدم</th>
-                                    <th style="padding: 10px;">البريد</th>
-                                    <th style="padding: 10px;">الرتبة</th>
-                                    <th style="padding: 10px;">المهام المحلولة</th>
-                                    <th style="padding: 10px;">آخر ظهور</th>
-                                    <th style="padding: 10px; text-align: center;">إجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-students-tbody">
-                                <tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 16px;">جاري التحميل...</td></tr>
-                            </tbody>
-                        </table>
+                <!-- TAB 2: STUDENTS MANAGEMENT -->
+                <div id="adm-tab-students" style="display: none;">
+                    <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+                        <div style="padding: 10px 14px; background: rgba(17, 24, 39, 0.9); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                            <span style="font-weight: 700; color: #fff; font-size: 0.85rem;">🎓 قائمة الطلاب وإدارة الحسابات:</span>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="adm-search-student" onkeyup="filterStudentsTable()" placeholder="🔍 بحث باسم الطالب أو الإيميل..." class="code-textarea" style="min-height: 32px; height: 32px; padding: 4px 10px; font-size: 0.75rem; width: 200px;">
+                                <button onclick="fetchAdminStats()" class="btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;">🔄 تحديث</button>
+                            </div>
+                        </div>
+                        <div style="overflow-x: auto; max-height: 380px;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.82rem;">
+                                <thead>
+                                    <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
+                                        <th style="padding: 10px;">المستخدم</th>
+                                        <th style="padding: 10px;">البريد الإلكتروني</th>
+                                        <th style="padding: 10px;">الرتبة</th>
+                                        <th style="padding: 10px;">المهام المحلولة</th>
+                                        <th style="padding: 10px;">آخر ظهور</th>
+                                        <th style="padding: 10px; text-align: center;">إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-students-tbody">
+                                    <tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 16px;">جاري التحميل...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Recent Login History -->
-                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
-                    <div style="padding: 10px 14px; background: rgba(17, 24, 39, 0.9); border-bottom: 1px solid var(--border-color);">
-                        <span style="font-weight: 700; color: #60a5fa; font-size: 0.85rem;">🕒 آخر نشاط تسجيل دخول (Live):</span>
-                    </div>
-                    <div style="overflow-x: auto; max-height: 180px;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
-                            <thead>
-                                <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8;">
-                                    <th style="padding: 8px 10px;">المستخدم</th>
-                                    <th style="padding: 8px 10px;">عنوان IP</th>
-                                    <th style="padding: 8px 10px;">الوقت والتاريخ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-logins-tbody">
-                                <tr><td colspan="3" style="text-align: center; color: #9ca3af; padding: 12px;">جاري تحميل السجلات...</td></tr>
-                            </tbody>
-                        </table>
+                <!-- TAB 3: UPLOADED ASSIGNMENT FILES -->
+                <div id="adm-tab-submissions" style="display: none;">
+                    <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 12px; overflow: hidden;">
+                        <div style="padding: 10px 14px; background: rgba(88, 28, 135, 0.25); border-bottom: 1px solid rgba(167, 139, 250, 0.3); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                            <span style="font-weight: 700; color: #c4b5fd; font-size: 0.85rem;">📁 تكليفات وملفات الطلاب المرفوعة (Assignment Files):</span>
+                            <span style="font-size: 0.75rem; color: #94a3b8;">اضغط على 'تنزيل' لتحميل ومعاينة أي ملف في جهازك</span>
+                        </div>
+                        <div style="overflow-x: auto; max-height: 380px;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
+                                <thead>
+                                    <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
+                                        <th style="padding: 8px 10px;">الطالب</th>
+                                        <th style="padding: 8px 10px;">اسم الملف</th>
+                                        <th style="padding: 8px 10px;">ملاحظات / المهمة</th>
+                                        <th style="padding: 8px 10px;">الحجم</th>
+                                        <th style="padding: 8px 10px;">تاريخ الرفع</th>
+                                        <th style="padding: 8px 10px; text-align: center;">تحميل / فتح</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-submissions-tbody">
+                                    <tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد ملفات مرفوعة حتى الآن</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Recent Contact Inquiries -->
-                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; overflow: hidden;">
-                    <div style="padding: 10px 14px; background: rgba(14, 116, 144, 0.25); border-bottom: 1px solid rgba(56, 189, 248, 0.3); display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 700; color: #38bdf8; font-size: 0.85rem;">📨 رسائل وطلبات الاتصال بالبشمهندس يوسف:</span>
+                <!-- TAB 4: LIVE CODE INSPECTOR (Actual student solutions) -->
+                <div id="adm-tab-codes" style="display: none;">
+                    <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 12px; overflow: hidden;">
+                        <div style="padding: 10px 14px; background: rgba(6, 78, 59, 0.25); border-bottom: 1px solid rgba(52, 211, 153, 0.3); display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700; color: #6ee7b7; font-size: 0.85rem;">💻 فاحص أكواد الطلاب وحلول المهام المباشرة:</span>
+                            <span style="font-size: 0.72rem; color: #94a3b8;">اضغط على أي حل لمعاينة كود الطالب بالكامل</span>
+                        </div>
+                        <div style="overflow-x: auto; max-height: 380px;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
+                                <thead>
+                                    <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
+                                        <th style="padding: 8px 10px;">الطالب</th>
+                                        <th style="padding: 8px 10px;">معرف المهمة والدرس</th>
+                                        <th style="padding: 8px 10px;">النتيجة</th>
+                                        <th style="padding: 8px 10px;">تاريخ الإرسال</th>
+                                        <th style="padding: 8px 10px; text-align: center;">الكود</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-codes-tbody">
+                                    <tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد أكواد مرسلة حتى الآن</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div style="overflow-x: auto; max-height: 220px;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
-                            <thead>
-                                <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
-                                    <th style="padding: 8px 10px;">الاسم</th>
-                                    <th style="padding: 8px 10px;">بيانات التواصل</th>
-                                    <th style="padding: 8px 10px;">نص الرسالة / الاستفسار</th>
-                                    <th style="padding: 8px 10px;">التاريخ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-inquiries-tbody">
-                                <tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 14px;">جاري تحميل الرسائل...</td></tr>
-                            </tbody>
-                        </table>
+                </div>
+
+                <!-- TAB 5: TASK & LESSON CREATOR -->
+                <div id="adm-tab-creator" style="display: none;">
+                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; border-bottom: 1px solid rgba(245, 158, 11, 0.2); padding-bottom: 8px;">
+                            <span style="font-size: 1.4rem;">➕</span>
+                            <div>
+                                <h4 style="color: #fbbf24; margin: 0; font-weight: 800;">إنشاء ونشر درس وتكليف جديد على المنصة</h4>
+                                <span style="font-size: 0.75rem; color: #9ca3af;">أضف المهمة التي تريدها براحتك ليتم إدراجها فوراً للطلاب في المسار العام أو قسم الجامعات</span>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                            <div>
+                                <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">المسار المستهدف:</label>
+                                <select id="adm-new-track" class="code-textarea" style="min-height: 38px; height: 38px; padding: 6px 10px; font-size: 0.85rem;">
+                                    <option value="general">🐍 المسار العام لبايثون</option>
+                                    <option value="university">🎓 قسم الجامعات والمقررات الأكاديمية</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">تصنيف الدرس (Category):</label>
+                                <input id="adm-new-category" type="text" class="code-textarea" style="min-height: 38px; height: 38px; padding: 6px 10px; font-size: 0.85rem;" placeholder="مثال: الخوارزميات، الدوال، OOP">
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">عنوان الدرس (Lesson Title):</label>
+                            <input id="adm-new-title" type="text" class="code-textarea" style="min-height: 38px; height: 38px; padding: 6px 10px; font-size: 0.85rem;" placeholder="مثال: القواميس المتقدمة (Dictionaries & Sets)">
+                        </div>
+
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">شرح تمهيدي للدرس (Markdown / Text):</label>
+                            <textarea id="adm-new-content" class="code-textarea" rows="4" placeholder="اكتب شرحاً سريعاً أو أمثلة برمجية ليراها الطالب قبل حل المهمة..."></textarea>
+                        </div>
+
+                        <div style="background: rgba(3, 7, 18, 0.6); padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 14px;">
+                            <div style="font-size: 0.82rem; font-weight: 700; color: #fbbf24; margin-bottom: 10px;">🎯 بيانات المهمة والتكليف التطبيقي:</div>
+                            
+                            <div style="margin-bottom: 10px;">
+                                <label style="font-size: 0.78rem; color: #9ca3af; display: block; margin-bottom: 4px;">عنوان المهمة:</label>
+                                <input id="adm-new-task-title" type="text" class="code-textarea" style="min-height: 36px; height: 36px; padding: 6px 10px; font-size: 0.82rem;" placeholder="مثال: المهمة 1: استخراج المفاتيح الفريدة">
+                            </div>
+
+                            <div style="margin-bottom: 10px;">
+                                <label style="font-size: 0.78rem; color: #9ca3af; display: block; margin-bottom: 4px;">نص المطلوب والتعليمات (Instruction):</label>
+                                <textarea id="adm-new-task-instruction" class="code-textarea" rows="2" placeholder="اكتب المطلوب من الطالب بدقة..."></textarea>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                <div>
+                                    <label style="font-size: 0.78rem; color: #9ca3af; display: block; margin-bottom: 4px;">كود البداية التمهيدي (Starter Code):</label>
+                                    <textarea id="adm-new-starter-code" class="code-textarea" rows="3" placeholder="# اكتب الكود هنا\n"></textarea>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.78rem; color: #9ca3af; display: block; margin-bottom: 4px;">المخرجات المتوقعة للاجتياز (Expected Output):</label>
+                                    <textarea id="adm-new-expected-output" class="code-textarea" rows="3" placeholder="المخرجات الدقيقة التي سيقارن بها المحرك لاجتياز المهمة..."></textarea>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style="font-size: 0.78rem; color: #9ca3af; display: block; margin-bottom: 4px;">تلميح مساعدة (Hint - اختياري):</label>
+                                <input id="adm-new-hint" type="text" class="code-textarea" style="min-height: 36px; height: 36px; padding: 6px 10px; font-size: 0.82rem;" placeholder="تلميح لمساعدة الطالب إذا تعثر...">
+                            </div>
+                        </div>
+
+                        <div id="adm-creator-status" style="display: none; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.82rem;"></div>
+
+                        <button id="btn-create-task-submit" onclick="submitAdminNewTask()" class="btn-action" style="width: 100%; padding: 10px; font-size: 0.9rem; font-weight: 700; background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+                            🚀 نشر المهمة على المنصة الآن
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 6: CONTACT INQUIRIES -->
+                <div id="adm-tab-inquiries" style="display: none;">
+                    <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; overflow: hidden;">
+                        <div style="padding: 10px 14px; background: rgba(14, 116, 144, 0.25); border-bottom: 1px solid rgba(56, 189, 248, 0.3); display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700; color: #38bdf8; font-size: 0.85rem;">📨 رسائل وطلبات التواصل والدعم الفني:</span>
+                        </div>
+                        <div style="overflow-x: auto; max-height: 380px;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
+                                <thead>
+                                    <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
+                                        <th style="padding: 8px 10px;">الاسم</th>
+                                        <th style="padding: 8px 10px;">بيانات التواصل</th>
+                                        <th style="padding: 8px 10px;">نص الرسالة / الاستفسار</th>
+                                        <th style="padding: 8px 10px;">التاريخ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-inquiries-tbody">
+                                    <tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 14px;">جاري تحميل الرسائل...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -1227,9 +1386,213 @@
                     }
                 }
 
+                // Update badges
+                const bUsers = document.getElementById('adm-badge-users');
+                if (bUsers) bUsers.textContent = data.total_users || 0;
+                const bFiles = document.getElementById('adm-badge-files');
+                if (bFiles) bFiles.textContent = data.total_uploaded_submissions || (data.uploaded_submissions ? data.uploaded_submissions.length : 0);
+                const bInq = document.getElementById('adm-badge-inquiries');
+                if (bInq) bInq.textContent = data.total_inquiries || 0;
+
+                // Render Live Code Submissions
+                const codesTbody = document.getElementById('admin-codes-tbody');
+                if (codesTbody) {
+                    if (!data.task_submissions || data.task_submissions.length === 0) {
+                        codesTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد أكواد مرسلة حتى الآن</td></tr>';
+                    } else {
+                        codesTbody.innerHTML = data.task_submissions.map(ts => {
+                            const statusBadge = ts.passed 
+                                ? '<span style="color: #34d399; font-weight:700;">✓ ناجح</span>'
+                                : '<span style="color: #f87171; font-weight:700;">✕ لم يجتز</span>';
+                            return `
+                                <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4);">
+                                    <td style="padding: 8px 10px; font-weight: 700; color: #fff;">${ts.username}</td>
+                                    <td style="padding: 8px 10px; color: #94a3b8; font-family: monospace;">${ts.task_id} (${ts.lesson_id})</td>
+                                    <td style="padding: 8px 10px;">${statusBadge}</td>
+                                    <td style="padding: 8px 10px; color: #cbd5e1; font-size: 0.72rem; white-space: nowrap;">${ts.created_at}</td>
+                                    <td style="padding: 8px 10px; text-align: center;">
+                                        <button onclick='viewCodeInspectorModal(${JSON.stringify(ts.username)}, ${JSON.stringify(ts.task_id)}, ${JSON.stringify(ts.code)}, ${JSON.stringify(ts.output)})' class="btn-secondary" style="padding: 2px 8px; font-size: 0.72rem; color: #34d399;">
+                                            👁️ معاينة الكود
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                }
+
             } catch (err) {
                 console.error("Error loading admin stats:", err);
             }
+        }
+
+        function switchAdminTab(tabName) {
+            const tabs = ['overview', 'students', 'submissions', 'codes', 'creator', 'inquiries'];
+            tabs.forEach(t => {
+                const tabEl = document.getElementById(`adm-tab-${t}`);
+                const btnEl = document.getElementById(`adm-tab-btn-${t}`);
+                if (tabEl) tabEl.style.display = (t === tabName) ? 'block' : 'none';
+                if (btnEl) {
+                    if (t === tabName) {
+                        btnEl.className = 'btn-action';
+                    } else {
+                        btnEl.className = 'btn-secondary';
+                    }
+                }
+            });
+        }
+
+        function filterStudentsTable() {
+            const query = document.getElementById('adm-search-student').value.toLowerCase().trim();
+            const rows = document.querySelectorAll('#admin-students-tbody tr');
+            rows.forEach(r => {
+                const text = r.textContent.toLowerCase();
+                r.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        function viewCodeInspectorModal(username, taskId, code, output) {
+            alert(`💻 كود الطالب: [${username}] للمهمة [${taskId}]\n\n--- الكود المكتوب ---\n${code}\n\n--- مخرجات الـ Terminal ---\n${output || '(لا توجد مخرجات)'}`);
+        }
+
+        async function submitAdminNewTask() {
+            const track = document.getElementById('adm-new-track').value;
+            const category = document.getElementById('adm-new-category').value.trim();
+            const title = document.getElementById('adm-new-title').value.trim();
+            const content = document.getElementById('adm-new-content').value.trim();
+            const taskTitle = document.getElementById('adm-new-task-title').value.trim();
+            const instruction = document.getElementById('adm-new-task-instruction').value.trim();
+            const starterCode = document.getElementById('adm-new-starter-code').value;
+            const expectedOutput = document.getElementById('adm-new-expected-output').value.trim();
+            const hint = document.getElementById('adm-new-hint').value.trim();
+            const statusBox = document.getElementById('adm-creator-status');
+            const submitBtn = document.getElementById('btn-create-task-submit');
+
+            statusBox.style.display = 'none';
+
+            if (!title || !taskTitle || !instruction || !expectedOutput) {
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                statusBox.style.color = '#f87171';
+                statusBox.textContent = '❌ يرجى ملء الحقول الإجبارية: عنوان الدرس، عنوان المهمة، نص المطلوب، والمخرجات المتوقعة للاجتياز.';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'جاري النشر...';
+
+            try {
+                const res = await fetch('/api/admin/create-task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        track,
+                        category: category || 'مقررات بايثون',
+                        title,
+                        content,
+                        task_title: taskTitle,
+                        instruction,
+                        starter_code: starterCode,
+                        expected_output: expectedOutput,
+                        hint
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    statusBox.style.display = 'block';
+                    statusBox.style.background = 'rgba(34, 197, 94, 0.2)';
+                    statusBox.style.color = '#4ade80';
+                    statusBox.textContent = `✓ ${data.message}`;
+                    
+                    // Reset form
+                    document.getElementById('adm-new-title').value = '';
+                    document.getElementById('adm-new-content').value = '';
+                    document.getElementById('adm-new-task-title').value = '';
+                    document.getElementById('adm-new-task-instruction').value = '';
+                    document.getElementById('adm-new-starter-code').value = '# اكتب الكود هنا\n';
+                    document.getElementById('adm-new-expected-output').value = '';
+                    document.getElementById('adm-new-hint').value = '';
+
+                    await fetchPlatformState();
+                    fetchAdminStats();
+                } else {
+                    statusBox.style.display = 'block';
+                    statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                    statusBox.style.color = '#f87171';
+                    statusBox.textContent = `❌ ${data.error || 'فشل نشر المهمة'}`;
+                }
+            } catch (err) {
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                statusBox.style.color = '#f87171';
+                statusBox.textContent = '❌ خطأ في الاتصال بالخادم';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 نشر المهمة على المنصة الآن';
+            }
+        }
+
+        async function handleDirectFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!platformState || !platformState.user) {
+                alert("يرجى تسجيل الدخول أولاً لتتمكن من تسليم ورفع التكليفات.");
+                openAuthModal();
+                return;
+            }
+
+            const notes = document.getElementById('custom-upload-notes').value.trim();
+            const statusBox = document.getElementById('direct-upload-status');
+            statusBox.style.display = 'block';
+            statusBox.style.background = 'rgba(56, 189, 248, 0.2)';
+            statusBox.style.color = '#38bdf8';
+            statusBox.innerHTML = `<span>⏳ جاري رفع ملف <strong>${file.name}</strong>...</span>`;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const arrayBuffer = e.target.result;
+                    let binary = '';
+                    const bytes = new Uint8Array(arrayBuffer);
+                    for (let i = 0; i < bytes.byteLength; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    const base64Content = btoa(binary);
+
+                    const res = await fetch('/api/upload-submission', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            filename: file.name,
+                            file_content_base64: base64Content,
+                            task_id: "عام / تكليف حر",
+                            lesson_id: currentLessonId || "عام",
+                            notes: notes || "تسليم مباشر عبر صندوق التكليفات"
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                        statusBox.style.color = '#f87171';
+                        statusBox.innerHTML = `<span>❌ فشل الرفع: ${data.error || 'حدث خطأ'}</span>`;
+                    } else {
+                        statusBox.style.background = 'rgba(34, 197, 94, 0.2)';
+                        statusBox.style.color = '#4ade80';
+                        statusBox.innerHTML = `<span>✓ تم تسليم الملف '${file.name}' بنجاح! تم توثيقه لدى البشمهندس يوسف في لوحة الإدارة.</span>`;
+                        document.getElementById('custom-upload-notes').value = '';
+                    }
+                } catch (err) {
+                    statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                    statusBox.style.color = '#f87171';
+                    statusBox.innerHTML = `<span>❌ خطأ في الاتصال بالخادم أثناء رفع الملف</span>`;
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsArrayBuffer(file);
         }
 
         async function deleteStudentUser(userId, username) {
