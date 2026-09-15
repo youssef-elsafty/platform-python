@@ -21,6 +21,24 @@
             
             <div class="header-actions">
                 <div id="user-info-area" style="display: flex; align-items: center; gap: 8px;">
+                    <!-- Notification Bell & Center -->
+                    <div style="position: relative;">
+                        <button id="btn-notifications" onclick="toggleNotificationsDropdown()" class="btn-secondary" style="padding: 6px 10px; font-size: 0.85rem; position: relative; border-color: rgba(245, 158, 11, 0.4); color: #fbbf24;" title="التنبيهات والتكليفات الجديدة">
+                            <span>🔔</span>
+                            <span id="notif-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 800; border-radius: 9999px; padding: 2px 6px; box-shadow: 0 0 8px #ef4444;">0</span>
+                        </button>
+                        <!-- Notifications Dropdown Menu -->
+                        <div id="notif-dropdown" style="display: none; position: absolute; left: 0; top: 120%; width: 330px; background: rgba(17, 24, 39, 0.98); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); z-index: 1000; padding: 12px; backdrop-filter: blur(16px);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 8px;">
+                                <span style="font-size: 0.82rem; font-weight: 700; color: #fbbf24;">📢 التنبيهات والتكليفات المنشورة</span>
+                                <button onclick="markAllNotificationsRead()" style="background: none; border: none; color: #9ca3af; font-size: 0.72rem; cursor: pointer;">تحديد كمقروء ✓</button>
+                            </div>
+                            <div id="notif-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                                <!-- Dynamically rendered notifications -->
+                            </div>
+                        </div>
+                    </div>
+
                     <button onclick="openContactModal()" class="btn-secondary" style="padding: 6px 12px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px; border-color: rgba(34, 197, 94, 0.4); color: #4ade80;">
                         <span>📞</span> تواصل معنا
                     </button>
@@ -887,6 +905,9 @@
                 } else if (currentLessonId) {
                     loadLesson(currentLessonId);
                 }
+
+                // Dynamic notification broadcast check
+                checkAndNotifyNewTasks();
             } catch (err) {
                 console.error("Error fetching state:", err);
             }
@@ -1703,7 +1724,168 @@
             }
         }
 
+        // ================= NOTIFICATIONS & BROADCAST SYSTEM =================
+        let pendingNotifLesson = null;
+
+        function toggleNotificationsDropdown() {
+            const dropdown = document.getElementById('notif-dropdown');
+            if (!dropdown) return;
+            const isVisible = dropdown.style.display === 'block';
+            dropdown.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) {
+                const badge = document.getElementById('notif-badge');
+                if (badge) badge.style.display = 'none';
+            }
+        }
+
+        function closeNewTaskToast() {
+            const toast = document.getElementById('toast-new-task');
+            if (toast) toast.style.display = 'none';
+        }
+
+        function handleToastClick() {
+            if (pendingNotifLesson) {
+                if (pendingNotifLesson.track && pendingNotifLesson.track !== currentTrack) {
+                    switchTrack(pendingNotifLesson.track);
+                }
+                loadLesson(pendingNotifLesson.id);
+                const anchor = document.getElementById('lesson-view-anchor');
+                if (anchor) anchor.scrollIntoView({ behavior: 'smooth' });
+            }
+            closeNewTaskToast();
+        }
+
+        function markAllNotificationsRead() {
+            if (!platformState || !platformState.user) return;
+            const userKey = 'seen_lessons_' + platformState.user.id;
+            const allLessonIds = (platformState.lessons || []).map(l => l.id);
+            localStorage.setItem(userKey, JSON.stringify(allLessonIds));
+            const badge = document.getElementById('notif-badge');
+            if (badge) badge.style.display = 'none';
+            renderNotificationsList([]);
+        }
+
+        function renderNotificationsList(unreadLessons) {
+            const list = document.getElementById('notif-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            const lessonsToShow = (platformState && platformState.lessons) ? platformState.lessons.slice().reverse() : [];
+            if (lessonsToShow.length === 0) {
+                list.innerHTML = '<div style="color: #9ca3af; font-size: 0.78rem; text-align: center; padding: 12px;">لا توجد تنبيهات حالياً.</div>';
+                return;
+            }
+
+            lessonsToShow.forEach(l => {
+                const item = document.createElement('div');
+                const isNew = unreadLessons && unreadLessons.some(u => u.id === l.id);
+                item.style.cssText = `padding: 8px 10px; border-radius: 8px; background: ${isNew ? 'rgba(245, 158, 11, 0.15)' : 'rgba(31, 41, 55, 0.5)'}; border: 1px solid ${isNew ? 'rgba(245, 158, 11, 0.4)' : 'rgba(75, 85, 99, 0.3)'}; cursor: pointer; transition: all 0.2s;`;
+                item.onmouseenter = () => item.style.transform = 'translateY(-1px)';
+                item.onmouseleave = () => item.style.transform = 'none';
+                
+                const trackName = l.track === 'university' ? '🎓 قسم الجامعات' : '🐍 المسار العام';
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                        <span style="font-size: 0.72rem; color: #38bdf8; font-weight: 700;">${trackName}</span>
+                        ${isNew ? '<span style="background: #ef4444; color: #fff; font-size: 0.6rem; padding: 1px 5px; border-radius: 4px; font-weight: 700;">جديد 🔔</span>' : ''}
+                    </div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #f3f4f6;">${l.title}</div>
+                    <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">${l.total_tasks} مهام • اضغط للفتح</div>
+                `;
+                item.onclick = () => {
+                    if (l.track && l.track !== currentTrack) {
+                        switchTrack(l.track);
+                    }
+                    loadLesson(l.id);
+                    toggleNotificationsDropdown();
+                    const anchor = document.getElementById('lesson-view-anchor');
+                    if (anchor) anchor.scrollIntoView({ behavior: 'smooth' });
+                };
+                list.appendChild(item);
+            });
+        }
+
+        function checkAndNotifyNewTasks() {
+            if (!platformState || !platformState.lessons) return;
+
+            // If not logged in, just show lessons list without individual notification tracking
+            if (!platformState.user) {
+                renderNotificationsList([]);
+                const badge = document.getElementById('notif-badge');
+                if (badge) badge.style.display = 'none';
+                return;
+            }
+
+            const userKey = 'seen_lessons_' + platformState.user.id;
+            const seenRaw = localStorage.getItem(userKey);
+            const seenIds = seenRaw ? JSON.parse(seenRaw) : [];
+            
+            // Check for unread lessons
+            const unreadLessons = platformState.lessons.filter(l => !seenIds.includes(l.id));
+
+            // Update Notification Bell Badge
+            const badge = document.getElementById('notif-badge');
+            if (badge) {
+                if (unreadLessons.length > 0) {
+                    badge.textContent = unreadLessons.length;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+
+            // Show Floating Toast if there's a new task and not yet alerted in this active session
+            if (unreadLessons.length > 0) {
+                const latest = unreadLessons[unreadLessons.length - 1];
+                const sessionAlertKey = `toast_shown_${platformState.user.id}_${latest.id}`;
+                if (!sessionStorage.getItem(sessionAlertKey)) {
+                    sessionStorage.setItem(sessionAlertKey, '1');
+                    pendingNotifLesson = latest;
+                    const toast = document.getElementById('toast-new-task');
+                    const toastMsg = document.getElementById('toast-new-task-msg');
+                    const trackText = latest.track === 'university' ? 'في قسم الجامعات والمقررات 🎓' : 'في المسار العام 🐍';
+                    if (toast && toastMsg) {
+                        toastMsg.textContent = `تم نشر تكليف جديد: "${latest.title}" ${trackText}. اضغط لبدء حله فوراً!`;
+                        toast.style.display = 'block';
+                    }
+                }
+            }
+
+            renderNotificationsList(unreadLessons);
+        }
+
+        // Close notifications dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const notifBtn = document.getElementById('btn-notifications');
+            const dropdown = document.getElementById('notif-dropdown');
+            if (dropdown && notifBtn && !notifBtn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Auto-poll state every 20 seconds so logged-in students receive alerts in real time
+        setInterval(() => {
+            if (platformState && platformState.user) {
+                fetchPlatformState();
+            }
+        }, 20000);
+
         fetchPlatformState();
     </script>
+
+    <!-- Floating New Task Announcement Toast -->
+    <div id="toast-new-task" style="display: none; position: fixed; bottom: 24px; left: 24px; z-index: 9999; max-width: 400px; background: linear-gradient(135deg, rgba(30, 27, 75, 0.98), rgba(15, 23, 42, 0.98)); border: 1.5px solid #f59e0b; border-radius: 14px; padding: 14px 18px; box-shadow: 0 12px 35px rgba(245, 158, 11, 0.35); backdrop-filter: blur(14px);">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <span style="font-size: 1.8rem; line-height: 1;">🔔</span>
+            <div style="flex: 1;">
+                <div style="font-weight: 800; color: #fbbf24; font-size: 0.88rem; margin-bottom: 4px;">تنبيه: تكليف برمجي جديد متاح!</div>
+                <div id="toast-new-task-msg" style="color: #e2e8f0; font-size: 0.82rem; line-height: 1.4; margin-bottom: 10px;"></div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="toast-btn-action" onclick="handleToastClick()" class="btn-action" style="padding: 5px 14px; font-size: 0.78rem; font-weight: 700; background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">ابدأ الحل الآن 🚀</button>
+                    <button onclick="closeNewTaskToast()" class="btn-secondary" style="padding: 5px 10px; font-size: 0.78rem;">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -124,7 +124,8 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             state = engine.get_platform_state(user_id=uid)
             state["user"] = current_user
             state["csrf_token"] = security.generate_csrf_token(session_token) if session_token else ""
-            return self.send_json(state)
+            refresh_cookie = f"session={session_token}; Path=/; Max-Age=315360000; HttpOnly; SameSite=Lax" if (session_token and current_user) else None
+            return self.send_json(state, set_cookie=refresh_cookie)
 
         # 3. Lesson Detail Endpoint
         if path.startswith("/api/lesson/"):
@@ -257,9 +258,9 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             if not reg_res["success"]:
                 return self.send_json(reg_res, status=400)
 
-            # Auto-login with persistent cookie (30 days)
+            # Auto-login with persistent permanent cookie (10 years)
             login_res = db.authenticate_user(username, password, ip_address=client_ip)
-            cookie = f"session={login_res['session_token']}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax"
+            cookie = f"session={login_res['session_token']}; Path=/; Max-Age=315360000; HttpOnly; SameSite=Lax"
             return self.send_json(login_res, status=200, set_cookie=cookie)
 
         # 4. Auth: Login
@@ -274,8 +275,8 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             if not login_res["success"]:
                 return self.send_json(login_res, status=401)
 
-            # Persistent cookie (30 days)
-            cookie = f"session={login_res['session_token']}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax"
+            # Persistent permanent cookie (10 years)
+            cookie = f"session={login_res['session_token']}; Path=/; Max-Age=315360000; HttpOnly; SameSite=Lax"
             return self.send_json(login_res, status=200, set_cookie=cookie)
 
         # 5. Auth: Logout

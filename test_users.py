@@ -93,5 +93,19 @@ class TestUsersAndProgress(unittest.TestCase):
         found = any(sub["original_filename"] == "assignment_01.py" for sub in stats["uploaded_submissions"])
         self.assertTrue(found)
 
+    def test_python_brain_challenge_university_lesson(self):
+        lesson = engine.get_lesson_by_id("uni_lesson_03")
+        self.assertIsNotNone(lesson)
+        self.assertEqual(lesson.get("track"), "university")
+        self.assertEqual(lesson.get("order"), 3)
+        self.assertIn("Python Brain Challenge", lesson.get("title", ""))
+        self.assertEqual(len(lesson.get("tasks", [])), 3)
+
+        # Test evaluating task 1 (Slicing/indexing challenge)
+        t1 = lesson["tasks"][0]
+        code1 = "text = '   Youssef_Elsafty2026   '\ns = text.strip()\nprint(s[0])\nprint(s[-1])\nprint(s[8:15])\nprint(s[15:])\nprint(s[:7])\n"
+        res1 = engine.evaluate_task(t1, code1)
+        self.assertTrue(res1["passed"])
+
 if __name__ == "__main__":
     unittest.main()

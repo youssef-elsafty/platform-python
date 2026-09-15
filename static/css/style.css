@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    Python Mastery Platform - Mobile-First Premium Dark System
    ========================================================================== */
 
@@ -960,3 +960,20 @@ header {
     scroll-behavior: auto !important;
   }
 }
+
+/* Toast Animation */
+@keyframes toastSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+#toast-new-task {
+  animation: toastSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
