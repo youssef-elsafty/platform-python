@@ -21,6 +21,9 @@
             
             <div class="header-actions">
                 <div id="user-info-area" style="display: flex; align-items: center; gap: 8px;">
+                    <button onclick="openContactModal()" class="btn-secondary" style="padding: 6px 12px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px; border-color: rgba(34, 197, 94, 0.4); color: #4ade80;">
+                        <span>📞</span> تواصل معنا
+                    </button>
                     <button id="btn-open-auth" onclick="openAuthModal()" class="btn-action" style="padding: 6px 12px; font-size: 0.78rem;">
                         👤 دخول / تسجيل
                     </button>
@@ -55,12 +58,18 @@
                 <a href="#dashboard-anchor" onclick="closeMobileDrawer()" class="drawer-link active">
                     <span>📊</span> لوحة تقدمي
                 </a>
-                <a href="#lessons-anchor" onclick="closeMobileDrawer()" class="drawer-link">
-                    <span>🗺️</span> خارطة الدروس
+                <a href="#lessons-anchor" onclick="switchTrack('general'); closeMobileDrawer();" class="drawer-link">
+                    <span>🐍</span> المسار العام لبايثون
+                </a>
+                <a href="#lessons-anchor" onclick="switchTrack('university'); closeMobileDrawer();" class="drawer-link" style="color: #c4b5fd;">
+                    <span>🎓</span> قسم الجامعات والمقررات
                 </a>
                 <a href="#lesson-view-anchor" onclick="closeMobileDrawer()" class="drawer-link">
                     <span>📖</span> الدرس الحالي والمهام
                 </a>
+                <button onclick="openContactModal(); closeMobileDrawer();" class="drawer-link" style="color: #4ade80; text-align: right; width: 100%;">
+                    <span>📞</span> تواصل معنا والدعم الفني
+                </button>
                 <button id="drawer-admin-btn" onclick="openAdminModal(); closeMobileDrawer();" class="drawer-link" style="display: none; color: #f59e0b; text-align: right; width: 100%;">
                     <span>👑</span> لوحة تحكم المشرف (Admin)
                 </button>
@@ -133,9 +142,18 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">
-                        <span>🗺️</span> خارطة الدروس والمهام
+                        <span>🗺️</span> خارطة الدروس والمسارات
                     </div>
                     <span id="roadmap-counter" class="stat-pill">0 دروس</span>
+                </div>
+                <!-- Track Switcher Tabs -->
+                <div style="display: flex; gap: 6px; padding: 10px; background: rgba(17, 24, 39, 0.6); border-bottom: 1px solid var(--border-subtle);">
+                    <button id="track-btn-general" onclick="switchTrack('general')" class="btn-action" style="flex: 1; padding: 6px 8px; font-size: 0.78rem; font-weight: 700; border-radius: 8px;">
+                        🐍 المسار العام
+                    </button>
+                    <button id="track-btn-university" onclick="switchTrack('university')" class="btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.78rem; font-weight: 700; border-radius: 8px;">
+                        🎓 قسم الجامعات
+                    </button>
                 </div>
                 <div id="lesson-list" class="lesson-list">
                     <!-- Lessons loaded via JS -->
@@ -222,11 +240,18 @@
                 </div>
 
                 <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
                         <span style="font-size: 0.8rem; font-weight: 700; color: #9ca3af;">محرر كود بايثون (Python 3):</span>
-                        <button onclick="toggleHint()" style="background:none; border:none; color: #fbbf24; cursor: pointer; font-size: 0.8rem; text-decoration: underline;">💡 إظهار تلميح</button>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <label for="submission-file-input" class="btn-secondary" style="padding: 3px 8px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
+                                <span>📁</span> رفع ملف تكليف (.py / ملف)
+                            </label>
+                            <input type="file" id="submission-file-input" onchange="handleSubmissionFileUpload(event)" style="display: none;" accept=".py,.txt,.pdf,.zip,.ipynb">
+                            <button onclick="toggleHint()" style="background:none; border:none; color: #fbbf24; cursor: pointer; font-size: 0.8rem; text-decoration: underline;">💡 تلميح</button>
+                        </div>
                     </div>
-                    <textarea id="code-editor" class="code-textarea" rows="8" spellcheck="false"></textarea>
+                    <div id="upload-status-pill" style="display: none; padding: 6px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 0.78rem;"></div>
+                    <textarea id="code-editor" class="code-textarea" rows="8" spellcheck="false" placeholder="# يمكنك كتابة الكود هنا أو رفع ملف الحل مباشرة من زر الرفع بالأعلى"></textarea>
                 </div>
 
                 <!-- Result Box With Creative Punchline -->
@@ -331,6 +356,45 @@
                             <div style="font-size: 0.75rem; color: var(--text-muted);">دروس مكتملة</div>
                         </div>
                     </div>
+                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 1.8rem; color: #38bdf8;">📞</span>
+                        <div>
+                            <div id="admin-stat-inquiries" style="font-size: 1.4rem; font-weight: 800; color: #38bdf8;">0</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">طلبات الاتصال والدعم</div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 1.8rem; color: #a78bfa;">📁</span>
+                        <div>
+                            <div id="admin-stat-submissions" style="font-size: 1.4rem; font-weight: 800; color: #a78bfa;">0</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">ملفات تكليفات مرفوعة</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Uploaded Assignments / Files Submissions Table -->
+                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
+                    <div style="padding: 10px 14px; background: rgba(88, 28, 135, 0.25); border-bottom: 1px solid rgba(167, 139, 250, 0.3); display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700; color: #c4b5fd; font-size: 0.85rem;">📁 تكليفات وملفات الطلاب المرفوعة (Submissions):</span>
+                        <span style="font-size: 0.72rem; color: #94a3b8;">معاينة وتنزيل مباشر</span>
+                    </div>
+                    <div style="overflow-x: auto; max-height: 220px;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
+                            <thead>
+                                <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
+                                    <th style="padding: 8px 10px;">الطالب</th>
+                                    <th style="padding: 8px 10px;">اسم الملف</th>
+                                    <th style="padding: 8px 10px;">المهمة / الدرس</th>
+                                    <th style="padding: 8px 10px;">الحجم</th>
+                                    <th style="padding: 8px 10px;">تاريخ الرفع</th>
+                                    <th style="padding: 8px 10px; text-align: center;">تحميل / فتح</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-submissions-tbody">
+                                <tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد ملفات مرفوعة حتى الآن</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Students Management Table -->
@@ -359,7 +423,7 @@
                 </div>
 
                 <!-- Recent Login History -->
-                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
                     <div style="padding: 10px 14px; background: rgba(17, 24, 39, 0.9); border-bottom: 1px solid var(--border-color);">
                         <span style="font-weight: 700; color: #60a5fa; font-size: 0.85rem;">🕒 آخر نشاط تسجيل دخول (Live):</span>
                     </div>
@@ -379,11 +443,97 @@
                     </div>
                 </div>
 
+                <!-- Recent Contact Inquiries -->
+                <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; overflow: hidden;">
+                    <div style="padding: 10px 14px; background: rgba(14, 116, 144, 0.25); border-bottom: 1px solid rgba(56, 189, 248, 0.3); display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700; color: #38bdf8; font-size: 0.85rem;">📨 رسائل وطلبات الاتصال بالبشمهندس يوسف:</span>
+                    </div>
+                    <div style="overflow-x: auto; max-height: 220px;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
+                            <thead>
+                                <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
+                                    <th style="padding: 8px 10px;">الاسم</th>
+                                    <th style="padding: 8px 10px;">بيانات التواصل</th>
+                                    <th style="padding: 8px 10px;">نص الرسالة / الاستفسار</th>
+                                    <th style="padding: 8px 10px;">التاريخ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-inquiries-tbody">
+                                <tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 14px;">جاري تحميل الرسائل...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
 
             <div class="modal-footer" style="padding: 10px 16px;">
                 <button onclick="closeAdminModal()" class="btn-secondary" style="width: 100%;">
                     إغلاق لوحة الإدارة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact & Direct Call Modal -->
+    <div id="contact-modal" class="modal-backdrop hidden" style="align-items: center; justify-content: center; padding: 16px;">
+        <div class="modal-content" style="max-width: 480px; width: 100%;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.3rem;">📞</span>
+                    <div>
+                        <h4 style="color: #fff; font-weight: 800; margin: 0;">تواصل مع البشمهندس يوسف</h4>
+                        <span style="font-size: 0.72rem; color: #9ca3af;">دعم فني • استفسارات برمجية • تدريب خاص</span>
+                    </div>
+                </div>
+                <button onclick="closeContactModal()" style="background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+
+            <div class="modal-body" style="gap: 12px;">
+                <!-- Direct Call / WhatsApp Quick Cards -->
+                <div style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.05)); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 12px;">
+                    <div style="font-size: 0.78rem; color: #86efac; font-weight: 700; margin-bottom: 8px;">اتصال مباشر أو واتساب:</div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <span style="font-family: monospace; font-size: 1.15rem; font-weight: 800; color: #fff; direction: ltr; letter-spacing: 1px;">
+                            01050333946
+                        </span>
+                        <div style="display: flex; gap: 6px;">
+                            <a href="tel:01050333946" class="btn-action" style="padding: 6px 12px; font-size: 0.78rem; text-decoration: none; background: #22c55e;">
+                                📞 اتصال
+                            </a>
+                            <a href="https://wa.me/201050333946" target="_blank" rel="noopener" class="btn-secondary" style="padding: 6px 12px; font-size: 0.78rem; text-decoration: none; border-color: #22c55e; color: #4ade80;">
+                                💬 واتساب
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; color: #64748b; font-size: 0.75rem; position: relative;">
+                    <span>أو أرسل استفسارك مباشرة وسيصل للداشبورد فوراً:</span>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">الاسم الكريم:</label>
+                    <input id="contact-name" type="text" class="code-textarea" style="min-height: 40px; height: 40px; padding: 8px 12px; font-family: inherit; font-size: 0.88rem;" placeholder="اسمك أو اسم حسابك">
+                </div>
+
+                <div>
+                    <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">رقم الموبايل أو الواتساب أو الإيميل:</label>
+                    <input id="contact-info" type="text" class="code-textarea" style="min-height: 40px; height: 40px; padding: 8px 12px; font-family: inherit; font-size: 0.88rem;" placeholder="مثال: 010... أو yourname@mail.com">
+                </div>
+
+                <div>
+                    <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">الرسالة أو الاستفسار:</label>
+                    <textarea id="contact-message" class="code-textarea" rows="3" style="min-height: 70px; padding: 8px 12px; font-family: inherit; font-size: 0.88rem;" placeholder="اكتب سؤالك أو ما تريد التواصل بشأنه..."></textarea>
+                </div>
+
+                <div id="contact-status-msg" style="display: none; padding: 8px; border-radius: 6px; font-size: 0.8rem;"></div>
+            </div>
+
+            <div class="modal-footer" style="flex-direction: row; gap: 8px;">
+                <button onclick="closeContactModal()" class="btn-secondary" style="flex: 1;">إلغاء</button>
+                <button id="btn-submit-contact" onclick="submitContactForm()" class="btn-action" style="flex: 2; background: linear-gradient(135deg, #10b981, #059669);">
+                    🚀 إرسال الرسالة
                 </button>
             </div>
         </div>
@@ -414,6 +564,30 @@
         let currentActiveTask = null;
         let platformState = null;
         let authMode = "login"; // "login" or "register"
+        let currentTrack = "general"; // "general" or "university"
+
+        function switchTrack(track) {
+            currentTrack = track;
+            const btnGeneral = document.getElementById('track-btn-general');
+            const btnUni = document.getElementById('track-btn-university');
+            if (track === 'general') {
+                if (btnGeneral) { btnGeneral.className = 'btn-action'; }
+                if (btnUni) { btnUni.className = 'btn-secondary'; }
+            } else {
+                if (btnGeneral) { btnGeneral.className = 'btn-secondary'; }
+                if (btnUni) { btnUni.className = 'btn-action'; }
+            }
+
+            // Find first unlocked lesson in this track
+            if (platformState && platformState.lessons) {
+                const trackLessons = platformState.lessons.filter(l => (l.track || 'general') === track);
+                if (trackLessons.length > 0) {
+                    const firstUnlocked = trackLessons.find(l => l.unlocked) || trackLessons[0];
+                    loadLesson(firstUnlocked.id);
+                }
+            }
+            renderRoadmap();
+        }
 
         function toggleMobileDrawer() {
             const drawer = document.getElementById('mobile-drawer-backdrop');
@@ -567,10 +741,15 @@
             let totalDone = 0;
             let completedLessonsCount = 0;
 
+            const filteredLessons = platformState.lessons.filter(l => (l.track || 'general') === currentTrack);
+
             platformState.lessons.forEach(l => {
                 totalTasks += l.total_tasks;
                 totalDone += l.completed_tasks;
                 if (l.completed) completedLessonsCount++;
+            });
+
+            filteredLessons.forEach(l => {
 
                 const card = document.createElement('div');
                 const isSelected = l.id === currentLessonId;
@@ -637,7 +816,7 @@
             if (statXp) statXp.textContent = `${xpPoints} XP`;
 
             const roadmapCount = document.getElementById('roadmap-counter');
-            if (roadmapCount) roadmapCount.textContent = `${platformState.lessons.length} دروس`;
+            if (roadmapCount) roadmapCount.textContent = `${filteredLessons.length} دروس`;
 
             const levelBadge = document.getElementById('student-level-badge');
             if (levelBadge) {
@@ -760,11 +939,86 @@
             const resBox = document.getElementById('result-box');
             resBox.style.display = 'none';
 
+            const uploadPill = document.getElementById('upload-status-pill');
+            if (uploadPill) uploadPill.style.display = 'none';
+
             document.getElementById('code-modal').classList.remove('hidden');
         }
 
         function closeEditor() {
             document.getElementById('code-modal').classList.add('hidden');
+        }
+
+        async function handleSubmissionFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!platformState || !platformState.user) {
+                alert("يرجى تسجيل الدخول أولاً لتتمكن من رفع التكليفات والواجبات.");
+                openAuthModal();
+                return;
+            }
+
+            const uploadPill = document.getElementById('upload-status-pill');
+            uploadPill.style.display = 'block';
+            uploadPill.style.background = 'rgba(56, 189, 248, 0.15)';
+            uploadPill.style.border = '1px solid rgba(56, 189, 248, 0.4)';
+            uploadPill.style.color = '#38bdf8';
+            uploadPill.innerHTML = `<span>⏳ جاري رفع وقراءة ملف: <strong>${file.name}</strong>...</span>`;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const arrayBuffer = e.target.result;
+                    let binary = '';
+                    const bytes = new Uint8Array(arrayBuffer);
+                    for (let i = 0; i < bytes.byteLength; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    const base64Content = btoa(binary);
+
+                    const taskId = currentActiveTask ? currentActiveTask.task.id : null;
+                    const lessonId = currentActiveTask ? currentActiveTask.lessonId : null;
+
+                    const res = await fetch('/api/upload-submission', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            filename: file.name,
+                            file_content_base64: base64Content,
+                            task_id: taskId,
+                            lesson_id: lessonId,
+                            notes: "تم الرفع من محرر المهام"
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        uploadPill.style.background = 'rgba(239, 68, 68, 0.15)';
+                        uploadPill.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                        uploadPill.style.color = '#f87171';
+                        uploadPill.innerHTML = `<span>❌ فشل الرفع: ${data.error || 'حدث خطأ'}</span>`;
+                    } else {
+                        uploadPill.style.background = 'rgba(34, 197, 94, 0.15)';
+                        uploadPill.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+                        uploadPill.style.color = '#4ade80';
+                        uploadPill.innerHTML = `<span>✓ تم رفع الملف بنجاح! تم إدراجه وتوثيقه لدى المشرف.</span>`;
+
+                        // If it contains extracted python text, populate the code editor!
+                        if (data.extracted_code) {
+                            document.getElementById('code-editor').value = data.extracted_code;
+                        }
+                    }
+                } catch (err) {
+                    uploadPill.style.background = 'rgba(239, 68, 68, 0.15)';
+                    uploadPill.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                    uploadPill.style.color = '#f87171';
+                    uploadPill.innerHTML = `<span>❌ خطأ في الاتصال بالخادم أثناء رفع الملف</span>`;
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsArrayBuffer(file);
         }
 
         function toggleHint() {
@@ -884,6 +1138,37 @@
                 document.getElementById('admin-stat-users').textContent = data.total_users || 0;
                 document.getElementById('admin-stat-tasks').textContent = data.total_tasks_solved || 0;
                 document.getElementById('admin-stat-lessons').textContent = data.total_lessons_completed || 0;
+                const statInquiries = document.getElementById('admin-stat-inquiries');
+                if (statInquiries) statInquiries.textContent = data.total_inquiries || 0;
+                const statSubmissions = document.getElementById('admin-stat-submissions');
+                if (statSubmissions) statSubmissions.textContent = data.total_uploaded_submissions || (data.uploaded_submissions ? data.uploaded_submissions.length : 0);
+
+                // Render Uploaded Submissions (Assignments)
+                const submissionsTbody = document.getElementById('admin-submissions-tbody');
+                if (submissionsTbody) {
+                    if (!data.uploaded_submissions || data.uploaded_submissions.length === 0) {
+                        submissionsTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد ملفات أو تكليفات مرفوعة حتى الآن</td></tr>';
+                    } else {
+                        submissionsTbody.innerHTML = data.uploaded_submissions.map(sub => {
+                            const sizeKb = (sub.file_size / 1024).toFixed(1);
+                            const downloadUrl = `/api/admin/download-submission/${encodeURIComponent(sub.saved_filename)}`;
+                            return `
+                                <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4);">
+                                    <td style="padding: 8px 10px; font-weight: 700; color: #c4b5fd;">${sub.username}</td>
+                                    <td style="padding: 8px 10px; font-family: monospace; color: #fff;">${sub.original_filename}</td>
+                                    <td style="padding: 8px 10px; color: #94a3b8; font-size: 0.75rem;">${sub.task_id || sub.lesson_id || 'عام'}</td>
+                                    <td style="padding: 8px 10px; color: #a78bfa; font-size: 0.75rem;">${sizeKb} KB</td>
+                                    <td style="padding: 8px 10px; color: #94a3b8; font-size: 0.72rem; white-space: nowrap;">${sub.created_at}</td>
+                                    <td style="padding: 8px 10px; text-align: center;">
+                                        <a href="${downloadUrl}" target="_blank" download="${sub.original_filename}" class="btn-secondary" style="padding: 3px 8px; font-size: 0.72rem; text-decoration: none; color: #38bdf8; display: inline-flex; align-items: center; gap: 4px;">
+                                            <span>📥</span> تنزيل
+                                        </a>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                }
 
                 // Render Students
                 if (!data.students || data.students.length === 0) {
@@ -925,6 +1210,23 @@
                     `).join('');
                 }
 
+                // Render Inquiries
+                const inquiriesTbody = document.getElementById('admin-inquiries-tbody');
+                if (inquiriesTbody) {
+                    if (!data.inquiries || data.inquiries.length === 0) {
+                        inquiriesTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 12px;">لا توجد رسائل أو طلبات اتصال حتى الآن</td></tr>';
+                    } else {
+                        inquiriesTbody.innerHTML = data.inquiries.map(iq => `
+                            <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4);">
+                                <td style="padding: 8px 10px; font-weight: 700; color: #38bdf8;">${iq.name}</td>
+                                <td style="padding: 8px 10px; direction: ltr; text-align: right; color: #fcd34d; font-family: monospace;">${iq.contact_info}</td>
+                                <td style="padding: 8px 10px; color: #e2e8f0; line-height: 1.4;">${iq.message}</td>
+                                <td style="padding: 8px 10px; color: #94a3b8; font-size: 0.72rem; white-space: nowrap;">${iq.created_at}</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+
             } catch (err) {
                 console.error("Error loading admin stats:", err);
             }
@@ -947,6 +1249,94 @@
                 }
             } catch (err) {
                 alert("خطأ في الاتصال بالخادم");
+            }
+        }
+
+        // ================= CONTACT & SUPPORT MODAL =================
+        function openContactModal() {
+            document.getElementById('contact-modal').classList.remove('hidden');
+            const statusBox = document.getElementById('contact-status-msg');
+            statusBox.style.display = 'none';
+            if (platformState && platformState.user) {
+                const nameInput = document.getElementById('contact-name');
+                const infoInput = document.getElementById('contact-info');
+                if (!nameInput.value) nameInput.value = platformState.user.username || '';
+                if (!infoInput.value) infoInput.value = platformState.user.email || '';
+            }
+        }
+
+        function closeContactModal() {
+            document.getElementById('contact-modal').classList.add('hidden');
+        }
+
+        async function submitContactForm() {
+            const name = document.getElementById('contact-name').value.trim();
+            const contactInfo = document.getElementById('contact-info').value.trim();
+            const message = document.getElementById('contact-message').value.trim();
+            const statusBox = document.getElementById('contact-status-msg');
+            const submitBtn = document.getElementById('btn-submit-contact');
+
+            statusBox.style.display = 'none';
+
+            if (!name) {
+                statusBox.textContent = 'يرجى كتابة الاسم';
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                statusBox.style.color = '#f87171';
+                return;
+            }
+            if (!contactInfo) {
+                statusBox.textContent = 'يرجى إدخال رقم الهاتف أو البريد الإلكتروني';
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                statusBox.style.color = '#f87171';
+                return;
+            }
+            if (!message) {
+                statusBox.textContent = 'يرجى كتابة نص الرسالة أو الاستفسار';
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                statusBox.style.color = '#f87171';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'جاري الإرسال...';
+
+            try {
+                const res = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        contact_info: contactInfo,
+                        message: message
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusBox.textContent = '✓ ' + data.message;
+                    statusBox.style.display = 'block';
+                    statusBox.style.background = 'rgba(34, 197, 94, 0.2)';
+                    statusBox.style.color = '#4ade80';
+                    document.getElementById('contact-message').value = '';
+                    setTimeout(() => {
+                        closeContactModal();
+                    }, 2500);
+                } else {
+                    statusBox.textContent = '❌ ' + (data.error || 'فشل إرسال الرسالة');
+                    statusBox.style.display = 'block';
+                    statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                    statusBox.style.color = '#f87171';
+                }
+            } catch (err) {
+                statusBox.textContent = '❌ خطأ في الاتصال بالخادم';
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                statusBox.style.color = '#f87171';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 إرسال الرسالة';
             }
         }
 

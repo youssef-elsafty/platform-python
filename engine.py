@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import glob
@@ -20,7 +20,8 @@ def load_all_lessons():
                 lessons.append(data)
         except Exception as e:
             print(f"Error loading {filepath}: {e}")
-    lessons.sort(key=lambda x: x.get("order", 999))
+    # Sort general track first, then by order
+    lessons.sort(key=lambda x: (0 if x.get("track", "general") == "general" else 1, x.get("order", 999)))
     return lessons
 
 def get_lesson_by_id(lesson_id):
@@ -37,34 +38,44 @@ def get_platform_state(user_id=None):
     
     lesson_statuses = []
 
-    for idx, lesson in enumerate(lessons):
-        lid = lesson["id"]
-        all_tasks = lesson.get("tasks", []) + lesson.get("cumulative_tasks", [])
-        total_tasks_count = len(all_tasks)
-        done_tasks_count = sum(1 for t in all_tasks if t["id"] in completed_tasks)
-        
-        is_completed = (total_tasks_count > 0 and done_tasks_count == total_tasks_count)
-        if is_completed and user_id and lid not in completed_lessons:
-            mark_lesson_done(user_id, lid)
-            completed_lessons.add(lid)
+    # Track-based unlocking: group lessons by track
+    track_lessons = {}
+    for lesson in lessons:
+        track = lesson.get("track", "general")
+        if track not in track_lessons:
+            track_lessons[track] = []
+        track_lessons[track].append(lesson)
 
-        if idx == 0:
-            unlocked = True
-        else:
-            prev_lesson = lessons[idx - 1]
-            unlocked = prev_lesson["id"] in completed_lessons
+    for track, t_lessons in track_lessons.items():
+        for idx, lesson in enumerate(t_lessons):
+            lid = lesson["id"]
+            all_tasks = lesson.get("tasks", []) + lesson.get("cumulative_tasks", [])
+            total_tasks_count = len(all_tasks)
+            done_tasks_count = sum(1 for t in all_tasks if t["id"] in completed_tasks)
+            
+            is_completed = (total_tasks_count > 0 and done_tasks_count == total_tasks_count)
+            if is_completed and user_id and lid not in completed_lessons:
+                mark_lesson_done(user_id, lid)
+                completed_lessons.add(lid)
 
-        lesson_statuses.append({
-            "id": lid,
-            "order": lesson.get("order", idx + 1),
-            "title": lesson.get("title", ""),
-            "category": lesson.get("category", "General"),
-            "description": lesson.get("description", ""),
-            "unlocked": unlocked,
-            "completed": is_completed,
-            "total_tasks": total_tasks_count,
-            "completed_tasks": done_tasks_count
-        })
+            if idx == 0:
+                unlocked = True
+            else:
+                prev_lesson = t_lessons[idx - 1]
+                unlocked = prev_lesson["id"] in completed_lessons
+
+            lesson_statuses.append({
+                "id": lid,
+                "track": track,
+                "order": lesson.get("order", idx + 1),
+                "title": lesson.get("title", ""),
+                "category": lesson.get("category", "General"),
+                "description": lesson.get("description", ""),
+                "unlocked": unlocked,
+                "completed": is_completed,
+                "total_tasks": total_tasks_count,
+                "completed_tasks": done_tasks_count
+            })
 
     return {
         "lessons": lesson_statuses,

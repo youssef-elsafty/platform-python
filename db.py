@@ -107,7 +107,7 @@ def init_db():
     """Initializes schema and runs migrations"""
     with get_db() as db:
         if db.is_pg:
-            for migration_file in ["001_initial_schema.sql", "002_admin_and_logs.sql"]:
+            for migration_file in ["001_initial_schema.sql", "002_admin_and_logs.sql", "003_contact_inquiries.sql", "004_task_submissions.sql"]:
                 m_path = os.path.join(os.path.dirname(__file__), "migrations", migration_file)
                 if os.path.exists(m_path):
                     with open(m_path, "r", encoding="utf-8") as f:
@@ -156,6 +156,44 @@ def init_db():
                     lesson_id TEXT NOT NULL,
                     completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (user_id, lesson_id),
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS contact_inquiries (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    contact_info TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    user_id TEXT,
+                    ip_address TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS task_submissions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    lesson_id TEXT NOT NULL,
+                    code TEXT NOT NULL,
+                    passed BOOLEAN NOT NULL DEFAULT 1,
+                    output TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS uploaded_submissions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    task_id TEXT,
+                    lesson_id TEXT,
+                    original_filename TEXT NOT NULL,
+                    saved_filename TEXT NOT NULL,
+                    file_size INTEGER NOT NULL,
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
             """)
@@ -297,12 +335,24 @@ def reset_user_progress(user_id: str):
         db.execute("DELETE FROM completed_tasks WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM completed_lessons WHERE user_id = ?", (user_id,))
 
+def record_task_submission(user_id: str, task_id: str, lesson_id: str, code: str, passed: bool, output: str = ""):
+    sub_id = str(uuid.uuid4())
+    try:
+        with get_db() as db:
+            db.execute("""
+                INSERT INTO task_submissions (id, user_id, task_id, lesson_id, code, passed, output)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (sub_id, user_id, task_id, lesson_id, code, 1 if passed else 0, output[:2000] if output else ""))
+    except Exception as e:
+        print(f"Error recording task submission: {e}")
+
 # ================= ADMIN DASHBOARD QUERIES =================
 def get_admin_dashboard_stats():
     with get_db() as db:
         total_users = db.fetchone("SELECT COUNT(*) as count FROM users")["count"]
         total_tasks_solved = db.fetchone("SELECT COUNT(*) as count FROM completed_tasks")["count"]
         total_lessons_completed = db.fetchone("SELECT COUNT(*) as count FROM completed_lessons")["count"]
+        total_inquiries = db.fetchone("SELECT COUNT(*) as count FROM contact_inquiries")["count"]
         
         # Recent Logins (Who logged in, when, from which IP)
         recent_logins = db.fetchall("""
@@ -327,13 +377,88 @@ def get_admin_dashboard_stats():
             ORDER BY u.created_at DESC
         """)
 
+        # Recent Task Solutions Submitted (Who solved what, the actual python code, timestamp)
+        task_submissions = db.fetchall("""
+            SELECT 
+                ts.id,
+                ts.user_id,
+                u.username,
+                ts.task_id,
+                ts.lesson_id,
+                ts.code,
+                ts.passed,
+                ts.output,
+                ts.created_at
+            FROM task_submissions ts
+            JOIN users u ON ts.user_id = u.id
+            ORDER BY ts.created_at DESC
+            LIMIT 50
+        """)
+
+        # Recent Contact Inquiries (Calls / Messages)
+        inquiries = db.fetchall("""
+            SELECT id, name, contact_info, message, user_id, ip_address, created_at
+            FROM contact_inquiries
+            ORDER BY created_at DESC
+            LIMIT 50
+        """)
+
+        # Uploaded Submissions (Assignments / Files submitted by students)
+        uploaded_submissions = db.fetchall("""
+            SELECT 
+                us.id,
+                us.user_id,
+                u.username,
+                us.task_id,
+                us.lesson_id,
+                us.original_filename,
+                us.saved_filename,
+                us.file_size,
+                us.notes,
+                us.created_at
+            FROM uploaded_submissions us
+            JOIN users u ON us.user_id = u.id
+            ORDER BY us.created_at DESC
+            LIMIT 50
+        """)
+
         return {
             "total_users": total_users,
             "total_tasks_solved": total_tasks_solved,
             "total_lessons_completed": total_lessons_completed,
+            "total_inquiries": total_inquiries,
+            "total_uploaded_submissions": len(uploaded_submissions),
             "recent_logins": recent_logins,
-            "students": students
+            "students": students,
+            "inquiries": inquiries,
+            "task_submissions": task_submissions,
+            "uploaded_submissions": uploaded_submissions
         }
+
+def save_uploaded_submission(user_id: str, original_filename: str, saved_filename: str, file_size: int, task_id: str = None, lesson_id: str = None, notes: str = ""):
+    sub_id = str(uuid.uuid4())
+    try:
+        with get_db() as db:
+            db.execute("""
+                INSERT INTO uploaded_submissions (id, user_id, task_id, lesson_id, original_filename, saved_filename, file_size, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (sub_id, user_id, task_id, lesson_id, original_filename, saved_filename, file_size, notes))
+        return {"success": True, "id": sub_id}
+    except Exception as e:
+        print(f"Error saving uploaded submission: {e}")
+        return {"success": False, "error": str(e)}
+
+def save_contact_inquiry(name: str, contact_info: str, message: str, user_id: str = None, ip_address: str = "127.0.0.1"):
+    inquiry_id = str(uuid.uuid4())
+    try:
+        with get_db() as db:
+            db.execute("""
+                INSERT INTO contact_inquiries (id, name, contact_info, message, user_id, ip_address)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (inquiry_id, name.strip(), contact_info.strip(), message.strip(), user_id, ip_address))
+        return {"success": True, "message": "تم إرسال رسالتك بنجاح! سيتواصل معك البشمهندس يوسف في أقرب وقت."}
+    except Exception as e:
+        return {"success": False, "error": f"حدث خطأ أثناء إرسال الرسالة: {str(e)}"}
 
 def delete_user(user_id: str):
     if not user_id:
@@ -347,7 +472,10 @@ def delete_user(user_id: str):
         
         db.execute("DELETE FROM completed_tasks WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM completed_lessons WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM task_submissions WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM uploaded_submissions WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM login_logs WHERE user_id = ?", (user_id,))
+        db.execute("DELETE FROM contact_inquiries WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM users WHERE id = ?", (user_id,))
         return {"success": True, "message": f"تم حذف المستخدم {user['username']} بنجاح"}

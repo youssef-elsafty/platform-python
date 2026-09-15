@@ -1,6 +1,8 @@
 import os
 import sys
 import json
+import base64
+import uuid
 import urllib.parse
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import db
@@ -16,7 +18,7 @@ if sys.platform == "win32":
 
 PORT = int(os.environ.get("PORT", 8080))
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "") # Empty means strict origin or same-origin
-MAX_PAYLOAD_SIZE = 64 * 1024 # 64 KB maximum request body
+MAX_PAYLOAD_SIZE = 10 * 1024 * 1024 # 10 MB maximum request body for file uploads
 
 class PythonLearningHandler(SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -160,6 +162,28 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             response_data["is_completed"] = lesson_status["completed"]
             return self.send_json(response_data)
 
+        # 4. Download / View Uploaded Submission File (Admin only)
+        if path.startswith("/api/admin/download-submission/"):
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            filename = os.path.basename(path.replace("/api/admin/download-submission/", "").strip("/"))
+            file_path = os.path.join(os.path.dirname(__file__), "uploads", "submissions", filename)
+            if not os.path.exists(file_path):
+                return self.send_json({"error": "الملف غير موجود"}, status=404)
+            
+            try:
+                with open(file_path, "rb") as f:
+                    file_content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+                self.send_header("Content-Length", str(len(file_content)))
+                self.end_headers()
+                self.wfile.write(file_content)
+                return
+            except Exception as e:
+                return self.send_json({"error": f"فشل قراءة الملف: {str(e)}"}, status=500)
+
         return super().do_GET()
 
     def do_POST(self):
@@ -191,11 +215,33 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             if not security.check_rate_limit(f"auth_{client_ip}", max_requests=5, window_seconds=60):
                 return self.send_json({"error": "محاولات كثيرة جداً. يرجى الانتظار دقيقة قبل المحاولة مجدداً."}, status=429)
 
+        if path == "/api/contact":
+            # Max 5 contact submissions per minute per IP
+            if not security.check_rate_limit(f"contact_{client_ip}", max_requests=5, window_seconds=60):
+                return self.send_json({"error": "تم إرسال عدة رسائل مؤخراً. يرجى الانتظار قليلاً قبل المحاولة مجدداً."}, status=429)
+
         if path in ("/api/run", "/api/submit-task"):
             # Max 15 execution requests per minute per User or IP
             rate_key = f"exec_{current_user['id'] if current_user else client_ip}"
             if not security.check_rate_limit(rate_key, max_requests=15, window_seconds=60):
                 return self.send_json({"error": "تم تجاوز معدل تشغيل الأكواد (الحد 15 طلباً بالدقيقة). تمهل قليلاً."}, status=429)
+
+        # Contact / Support Form
+        if path == "/api/contact":
+            name = str(body_data.get("name", "")).strip()
+            contact_info = str(body_data.get("contact_info", "")).strip()
+            message = str(body_data.get("message", "")).strip()
+
+            if not name or len(name) < 2 or len(name) > 100:
+                return self.send_json({"success": False, "error": "يرجى كتابة الاسم بشكل صحيح (بين 2 و 100 حرف)."}, status=400)
+            if not contact_info or len(contact_info) < 5 or len(contact_info) > 120:
+                return self.send_json({"success": False, "error": "يرجى إدخال رقم الهاتف أو البريد الإلكتروني للتواصل."}, status=400)
+            if not message or len(message) < 3 or len(message) > 2000:
+                return self.send_json({"success": False, "error": "يرجى كتابة رسالتك أو استفسارك (بين 3 و 2000 حرف)."}, status=400)
+
+            user_id = current_user["id"] if current_user else None
+            res = db.save_contact_inquiry(name, contact_info, message, user_id=user_id, ip_address=client_ip)
+            return self.send_json(res, status=200 if res["success"] else 400)
 
         # 3. Auth: Register (Strict Validation)
         if path == "/api/auth/register":
@@ -211,9 +257,9 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             if not reg_res["success"]:
                 return self.send_json(reg_res, status=400)
 
-            # Auto-login
+            # Auto-login with persistent cookie (30 days)
             login_res = db.authenticate_user(username, password, ip_address=client_ip)
-            cookie = f"session={login_res['session_token']}; Path=/; HttpOnly; SameSite=Lax"
+            cookie = f"session={login_res['session_token']}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax"
             return self.send_json(login_res, status=200, set_cookie=cookie)
 
         # 4. Auth: Login
@@ -228,7 +274,8 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             if not login_res["success"]:
                 return self.send_json(login_res, status=401)
 
-            cookie = f"session={login_res['session_token']}; Path=/; HttpOnly; SameSite=Lax"
+            # Persistent cookie (30 days)
+            cookie = f"session={login_res['session_token']}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax"
             return self.send_json(login_res, status=200, set_cookie=cookie)
 
         # 5. Auth: Logout
@@ -239,7 +286,7 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             return self.send_json({"success": True}, status=200, set_cookie=cookie)
 
         # 6. Authorization Guard: Endpoints requiring active login
-        if path in ("/api/submit-task", "/api/reset", "/api/admin/delete-user"):
+        if path in ("/api/submit-task", "/api/reset", "/api/admin/delete-user", "/api/upload-submission"):
             if not current_user:
                 return self.send_json({"error": "غير مصرح (Unauthorized): يرجى تسجيل الدخول أولاً للمتابعة."}, status=401)
 
@@ -285,6 +332,17 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 return self.send_json({"passed": False, "feedback": "المهمة غير موجودة"}, status=404)
 
             eval_res = engine.evaluate_task(target_task, code)
+            
+            # Record submission for the admin dashboard to inspect actual code, timestamp, user, and status
+            db.record_task_submission(
+                user_id=current_user["id"],
+                task_id=task_id,
+                lesson_id=lesson_id,
+                code=code,
+                passed=eval_res["passed"],
+                output=eval_res.get("output", "")
+            )
+
             if eval_res["passed"]:
                 db.mark_task_done(current_user["id"], task_id, lesson_id)
                 state = engine.get_platform_state(user_id=current_user["id"])
@@ -294,6 +352,69 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 eval_res["lesson_completed"] = False
 
             return self.send_json(eval_res)
+
+        # Upload Submission File (Student assignments)
+        if path == "/api/upload-submission":
+            original_filename = str(body_data.get("filename", "")).strip()
+            file_b64 = str(body_data.get("file_content_base64", "")).strip()
+            task_id = str(body_data.get("task_id", "")).strip() or None
+            lesson_id = str(body_data.get("lesson_id", "")).strip() or None
+            notes = str(body_data.get("notes", "")).strip()
+
+            if not original_filename or not file_b64:
+                return self.send_json({"success": False, "error": "يرجى اختيار ملف صالح للرفع."}, status=400)
+
+            # Security sanitization on filename and extension
+            safe_basename = os.path.basename(original_filename).replace(" ", "_")
+            ext = os.path.splitext(safe_basename)[1].lower()
+            allowed_exts = {".py", ".txt", ".pdf", ".zip", ".ipynb"}
+            if ext not in allowed_exts:
+                return self.send_json({"success": False, "error": "نوع الملف غير مدعوم. المسموح: .py, .ipynb, .pdf, .zip, .txt"}, status=400)
+
+            try:
+                file_bytes = base64.b64decode(file_b64)
+            except Exception:
+                return self.send_json({"success": False, "error": "بيانات الملف التالفة أو غير صالحة (Base64 Error)."}, status=400)
+
+            if len(file_bytes) > 8 * 1024 * 1024:
+                return self.send_json({"success": False, "error": "حجم الملف تجاوز الحد الأقصى المسموح به (8MB)."}, status=400)
+
+            # Unique stored filename: user_timestamp_uuid_name.ext
+            clean_name = "".join(c for c in safe_basename if c.isalnum() or c in "._-")
+            saved_filename = f"{current_user['username']}_{int(uuid.uuid1().time)}_{clean_name}"
+            upload_dir = os.path.join(os.path.dirname(__file__), "uploads", "submissions")
+            os.makedirs(upload_dir, exist_ok=True)
+            saved_path = os.path.join(upload_dir, saved_filename)
+
+            with open(saved_path, "wb") as f:
+                f.write(file_bytes)
+
+            # Save in database
+            save_res = db.save_uploaded_submission(
+                user_id=current_user["id"],
+                original_filename=safe_basename,
+                saved_filename=saved_filename,
+                file_size=len(file_bytes),
+                task_id=task_id,
+                lesson_id=lesson_id,
+                notes=notes
+            )
+
+            # If it's a python script or text, also extract text to send back to editor if needed
+            extracted_code = ""
+            if ext in (".py", ".txt"):
+                try:
+                    extracted_code = file_bytes.decode("utf-8", errors="replace")
+                except Exception:
+                    pass
+
+            return self.send_json({
+                "success": True,
+                "message": f"تم رفع الملف '{safe_basename}' بنجاح وحفظه في سجلاتك الأكاديمية.",
+                "filename": safe_basename,
+                "saved_filename": saved_filename,
+                "extracted_code": extracted_code
+            })
 
         return self.send_json({"error": "Endpoint not found"}, status=404)
 

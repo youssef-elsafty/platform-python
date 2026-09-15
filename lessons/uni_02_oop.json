@@ -1,0 +1,26 @@
+{
+  "id": "uni_lesson_02",
+  "track": "university",
+  "order": 2,
+  "title": "2. تكليف جامعي: البرمجة كائنية التوجه (OOP & Classes)",
+  "category": "مقررات الحوسبة والجامعات",
+  "description": "بناء الكلاسات (Classes)، الميثودز (Methods)، وحساب معدل الساعات والـ GPA الأكاديمي.",
+  "content": "### البرمجة كائنية التوجه (Object-Oriented Programming) 🏛️\n\nتعتبر الـ OOP الركن الأساسي في مشاريع البرمجة الجامعية وتطوير الأنظمة.\n\n#### كلاس الطالب (Student Class)\n```python\nclass Student:\n    def __init__(self, name, gpa):\n        self.name = name\n        self.gpa = gpa\n\n    def is_honors(self):\n        return self.gpa >= 3.5\n```",
+  "tasks": [
+    {
+      "id": "uni_t3",
+      "type": "lesson_task",
+      "title": "تكليف 3: إنشاء كلاس الطالب واستدعاء دالة الطباعة",
+      "instruction": "أنشئ كلاس باسم `Student` يحتوي على دالة `__init__(self, name)` ودالة `greet(self)` التي تطبع: `Hello, <name>`.\nثم قم بإنشاء كائن للطالب باسم `\"Youssef\"` واستدعِ دالة `greet()`.\nالمخرجات المطلوبة تماماً:\n`Hello, Youssef`",
+      "starter_code": "# أنشئ كلاس Student هنا\n",
+      "test_cases": [
+        {
+          "type": "exact_output",
+          "expected": "Hello, Youssef"
+        }
+      ],
+      "hint": "class Student:\n    def __init__(self, name):\n        self.name = name\n    def greet(self):\n        print(f'Hello, {self.name}')\ns = Student('Youssef')\ns.greet()"
+    }
+  ],
+  "cumulative_tasks": []
+}
