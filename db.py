@@ -107,7 +107,7 @@ def init_db():
     """Initializes schema and runs migrations"""
     with get_db() as db:
         if db.is_pg:
-            for migration_file in ["001_initial_schema.sql", "002_admin_and_logs.sql", "003_contact_inquiries.sql", "004_task_submissions.sql"]:
+            for migration_file in ["001_initial_schema.sql", "002_admin_and_logs.sql", "003_contact_inquiries.sql", "004_task_submissions.sql", "005_task_duration.sql"]:
                 m_path = os.path.join(os.path.dirname(__file__), "migrations", migration_file)
                 if os.path.exists(m_path):
                     with open(m_path, "r", encoding="utf-8") as f:
@@ -145,6 +145,7 @@ def init_db():
                     user_id TEXT NOT NULL,
                     task_id TEXT NOT NULL,
                     lesson_id TEXT NOT NULL,
+                    duration_seconds INTEGER DEFAULT 0,
                     completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (user_id, task_id),
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -179,6 +180,7 @@ def init_db():
                     code TEXT NOT NULL,
                     passed BOOLEAN NOT NULL DEFAULT 1,
                     output TEXT,
+                    duration_seconds INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
@@ -197,6 +199,17 @@ def init_db():
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
             """)
+
+            # Safe SQLite migration for existing databases
+            try:
+                cols_ts = [c[1] for c in db.conn.execute("PRAGMA table_info(task_submissions)").fetchall()]
+                if "duration_seconds" not in cols_ts:
+                    db.conn.execute("ALTER TABLE task_submissions ADD COLUMN duration_seconds INTEGER DEFAULT 0")
+                cols_ct = [c[1] for c in db.conn.execute("PRAGMA table_info(completed_tasks)").fetchall()]
+                if "duration_seconds" not in cols_ct:
+                    db.conn.execute("ALTER TABLE completed_tasks ADD COLUMN duration_seconds INTEGER DEFAULT 0")
+            except Exception as e:
+                print(f"Notice during SQLite duration migration: {e}")
 
         # Ensure default admin account exists: youssef / admin123
         admin = db.fetchone("SELECT id FROM users WHERE LOWER(username) = ?", ("youssef",))
@@ -286,19 +299,20 @@ def delete_session(token: str):
     with get_db() as db:
         db.execute("DELETE FROM sessions WHERE session_token = ?", (token,))
 
-def mark_task_done(user_id: str, task_id: str, lesson_id: str):
+def mark_task_done(user_id: str, task_id: str, lesson_id: str, duration_seconds: int = 0):
     with get_db() as db:
         if db.is_pg:
             db.execute("""
-                INSERT INTO completed_tasks (user_id, task_id, lesson_id)
-                VALUES (?, ?, ?)
-                ON CONFLICT (user_id, task_id) DO NOTHING
-            """, (user_id, task_id, lesson_id))
+                INSERT INTO completed_tasks (user_id, task_id, lesson_id, duration_seconds)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (user_id, task_id) DO UPDATE SET duration_seconds = EXCLUDED.duration_seconds
+            """, (user_id, task_id, lesson_id, duration_seconds))
         else:
-            db.execute(
-                "INSERT OR IGNORE INTO completed_tasks (user_id, task_id, lesson_id) VALUES (?, ?, ?)",
-                (user_id, task_id, lesson_id)
-            )
+            db.execute("""
+                INSERT INTO completed_tasks (user_id, task_id, lesson_id, duration_seconds)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (user_id, task_id) DO UPDATE SET duration_seconds = excluded.duration_seconds
+            """, (user_id, task_id, lesson_id, duration_seconds))
 
 def mark_lesson_done(user_id: str, lesson_id: str):
     with get_db() as db:
@@ -335,14 +349,21 @@ def reset_user_progress(user_id: str):
         db.execute("DELETE FROM completed_tasks WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM completed_lessons WHERE user_id = ?", (user_id,))
 
-def record_task_submission(user_id: str, task_id: str, lesson_id: str, code: str, passed: bool, output: str = ""):
+def get_user_avg_solve_seconds(user_id: str):
+    if not user_id:
+        return 0
+    with get_db() as db:
+        res = db.fetchone("SELECT ROUND(AVG(duration_seconds), 1) as avg_sec FROM task_submissions WHERE user_id = ? AND passed = 1 AND duration_seconds > 0", (user_id,))
+        return res["avg_sec"] if res and res["avg_sec"] is not None else 0
+
+def record_task_submission(user_id: str, task_id: str, lesson_id: str, code: str, passed: bool, output: str = "", duration_seconds: int = 0):
     sub_id = str(uuid.uuid4())
     try:
         with get_db() as db:
             db.execute("""
-                INSERT INTO task_submissions (id, user_id, task_id, lesson_id, code, passed, output)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (sub_id, user_id, task_id, lesson_id, code, 1 if passed else 0, output[:2000] if output else ""))
+                INSERT INTO task_submissions (id, user_id, task_id, lesson_id, code, passed, output, duration_seconds)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (sub_id, user_id, task_id, lesson_id, code, 1 if passed else 0, output[:2000] if output else "", duration_seconds))
     except Exception as e:
         print(f"Error recording task submission: {e}")
 
@@ -354,6 +375,10 @@ def get_admin_dashboard_stats():
         total_lessons_completed = db.fetchone("SELECT COUNT(*) as count FROM completed_lessons")["count"]
         total_inquiries = db.fetchone("SELECT COUNT(*) as count FROM contact_inquiries")["count"]
         
+        # Average solve time across all passed tasks
+        avg_solve_res = db.fetchone("SELECT ROUND(AVG(duration_seconds), 1) as avg_sec FROM task_submissions WHERE passed = 1 AND duration_seconds > 0")
+        avg_solve_seconds = avg_solve_res["avg_sec"] if avg_solve_res and avg_solve_res["avg_sec"] is not None else 0
+
         # Recent Logins (Who logged in, when, from which IP)
         recent_logins = db.fetchall("""
             SELECT username, ip_address, login_time 
@@ -372,12 +397,13 @@ def get_admin_dashboard_stats():
                 u.created_at,
                 (SELECT COUNT(*) FROM completed_tasks ct WHERE ct.user_id = u.id) as solved_tasks,
                 (SELECT COUNT(*) FROM completed_lessons cl WHERE cl.user_id = u.id) as finished_lessons,
-                (SELECT MAX(login_time) FROM login_logs ll WHERE ll.user_id = u.id) as last_login
+                (SELECT MAX(login_time) FROM login_logs ll WHERE ll.user_id = u.id) as last_login,
+                (SELECT ROUND(AVG(ts.duration_seconds), 1) FROM task_submissions ts WHERE ts.user_id = u.id AND ts.passed = 1 AND ts.duration_seconds > 0) as avg_solve_seconds
             FROM users u
             ORDER BY u.created_at DESC
         """)
 
-        # Recent Task Solutions Submitted (Who solved what, the actual python code, timestamp)
+        # Recent Task Solutions Submitted (Who solved what, the actual python code, timestamp, duration_seconds)
         task_submissions = db.fetchall("""
             SELECT 
                 ts.id,
@@ -388,6 +414,7 @@ def get_admin_dashboard_stats():
                 ts.code,
                 ts.passed,
                 ts.output,
+                COALESCE(ts.duration_seconds, 0) as duration_seconds,
                 ts.created_at
             FROM task_submissions ts
             JOIN users u ON ts.user_id = u.id
@@ -428,6 +455,7 @@ def get_admin_dashboard_stats():
             "total_lessons_completed": total_lessons_completed,
             "total_inquiries": total_inquiries,
             "total_uploaded_submissions": len(uploaded_submissions),
+            "avg_solve_seconds": avg_solve_seconds,
             "recent_logins": recent_logins,
             "students": students,
             "inquiries": inquiries,

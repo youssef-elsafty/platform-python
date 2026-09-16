@@ -107,5 +107,47 @@ class TestUsersAndProgress(unittest.TestCase):
         res1 = engine.evaluate_task(t1, code1)
         self.assertTrue(res1["passed"])
 
+    def test_task_duration_seconds_tracking_and_dashboard_stats(self):
+        uid_rand = uuid.uuid4().hex[:6]
+        username = f"dur_stud_{uid_rand}"
+        reg = db.create_user(username, f"{username}@test.com", "pass123")
+        self.assertTrue(reg["success"])
+        user = db.authenticate_user(username, "pass123")["user"]
+
+        # 1. Record task submission with duration_seconds (e.g. 45 seconds)
+        db.record_task_submission(
+            user_id=user["id"],
+            task_id="task_test_dur",
+            lesson_id="lesson_test_dur",
+            code="print('done')",
+            passed=True,
+            output="done",
+            duration_seconds=45
+        )
+        db.mark_task_done(user["id"], "task_test_dur", "lesson_test_dur", duration_seconds=45)
+
+        # 2. Check get_user_avg_solve_seconds
+        avg_user_sec = db.get_user_avg_solve_seconds(user["id"])
+        self.assertEqual(avg_user_sec, 45.0)
+
+        # 3. Check get_platform_state has avg_speed_seconds
+        state = engine.get_platform_state(user["id"])
+        self.assertEqual(state["avg_speed_seconds"], 45.0)
+
+        # 4. Check get_admin_dashboard_stats contains duration_seconds and avg stats
+        stats = db.get_admin_dashboard_stats()
+        self.assertIn("avg_solve_seconds", stats)
+        self.assertGreater(stats["avg_solve_seconds"], 0)
+
+        # Verify in task_submissions list
+        found_sub = next((ts for ts in stats["task_submissions"] if ts["user_id"] == user["id"]), None)
+        self.assertIsNotNone(found_sub)
+        self.assertEqual(found_sub["duration_seconds"], 45)
+
+        # Verify in students list
+        found_student = next((s for s in stats["students"] if s["id"] == user["id"]), None)
+        self.assertIsNotNone(found_student)
+        self.assertEqual(found_student["avg_solve_seconds"], 45.0)
+
 if __name__ == "__main__":
     unittest.main()

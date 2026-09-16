@@ -152,6 +152,13 @@
                         <div class="metric-lbl">نقاط XP</div>
                     </div>
                 </div>
+                <div class="metric-card">
+                    <div class="metric-icon" style="color: #38bdf8;">⏱️</div>
+                    <div>
+                        <div id="stat-avg-speed" class="metric-val">0 ث</div>
+                        <div class="metric-lbl">متوسط سرعة الحل</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -270,6 +277,9 @@
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span id="modal-task-badge" class="task-badge-direct">تمرين</span>
                     <h4 id="modal-task-title" style="color: #fff; font-weight: 700;">محرر حل المهمة</h4>
+                    <span id="modal-task-timer" style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-size: 0.78rem; font-family: monospace; font-weight: 700; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
+                        ⏱️ <span id="timer-display">00:00</span>
+                    </span>
                 </div>
                 <button onclick="closeEditor()" style="background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer;">✕</button>
             </div>
@@ -437,6 +447,13 @@
                                 <div style="font-size: 0.75rem; color: var(--text-muted);">رسائل وتواصل</div>
                             </div>
                         </div>
+                        <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 1.8rem; color: #38bdf8;">⏱️</span>
+                            <div>
+                                <div id="admin-stat-speed" style="font-size: 1.4rem; font-weight: 800; color: #38bdf8;">0 ث</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">متوسط وقت الحل</div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Recent Login History -->
@@ -480,12 +497,13 @@
                                         <th style="padding: 10px;">البريد الإلكتروني</th>
                                         <th style="padding: 10px;">الرتبة</th>
                                         <th style="padding: 10px;">المهام المحلولة</th>
+                                        <th style="padding: 10px;">متوسط وقت الحل</th>
                                         <th style="padding: 10px;">آخر ظهور</th>
                                         <th style="padding: 10px; text-align: center;">إجراءات</th>
                                     </tr>
                                 </thead>
                                 <tbody id="admin-students-tbody">
-                                    <tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 16px;">جاري التحميل...</td></tr>
+                                    <tr><td colspan="7" style="text-align: center; color: #9ca3af; padding: 16px;">جاري التحميل...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -533,12 +551,13 @@
                                         <th style="padding: 8px 10px;">الطالب</th>
                                         <th style="padding: 8px 10px;">معرف المهمة والدرس</th>
                                         <th style="padding: 8px 10px;">النتيجة</th>
+                                        <th style="padding: 8px 10px;">وقت الحل (ثانية)</th>
                                         <th style="padding: 8px 10px;">تاريخ الإرسال</th>
                                         <th style="padding: 8px 10px; text-align: center;">الكود</th>
                                     </tr>
                                 </thead>
                                 <tbody id="admin-codes-tbody">
-                                    <tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد أكواد مرسلة حتى الآن</td></tr>
+                                    <tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد أكواد مرسلة حتى الآن</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -995,6 +1014,9 @@
             const statXp = document.getElementById('stat-xp');
             if (statXp) statXp.textContent = `${xpPoints} XP`;
 
+            const statAvgSpeed = document.getElementById('stat-avg-speed');
+            if (statAvgSpeed) statAvgSpeed.textContent = (state.avg_speed_seconds || 0) + ' ث';
+
             const roadmapCount = document.getElementById('roadmap-counter');
             if (roadmapCount) roadmapCount.textContent = `${filteredLessons.length} دروس`;
 
@@ -1106,6 +1128,30 @@
             return card;
         }
 
+        let taskTimerInterval = null;
+        let taskStartTime = null;
+
+        function startTaskTimer() {
+            if (taskTimerInterval) clearInterval(taskTimerInterval);
+            taskStartTime = Date.now();
+            const display = document.getElementById('timer-display');
+            if (display) display.textContent = '00:00';
+            taskTimerInterval = setInterval(() => {
+                if (!taskStartTime) return;
+                const elapsedSeconds = Math.floor((Date.now() - taskStartTime) / 1000);
+                const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+                const secs = String(elapsedSeconds % 60).padStart(2, '0');
+                if (display) display.textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function stopTaskTimer() {
+            if (taskTimerInterval) {
+                clearInterval(taskTimerInterval);
+                taskTimerInterval = null;
+            }
+        }
+
         function openEditor(task, lessonId) {
             currentActiveTask = { task, lessonId };
             document.getElementById('modal-task-title').textContent = task.title;
@@ -1122,10 +1168,12 @@
             const uploadPill = document.getElementById('upload-status-pill');
             if (uploadPill) uploadPill.style.display = 'none';
 
+            startTaskTimer();
             document.getElementById('code-modal').classList.remove('hidden');
         }
 
         function closeEditor() {
+            stopTaskTimer();
             document.getElementById('code-modal').classList.add('hidden');
         }
 
@@ -1235,6 +1283,8 @@
             btn.disabled = true;
             btn.innerText = 'جاري التحقق...';
 
+            const durationSeconds = taskStartTime ? Math.max(1, Math.round((Date.now() - taskStartTime) / 1000)) : 0;
+
             try {
                 const res = await fetch('/api/submit-task', {
                     method: 'POST',
@@ -1242,11 +1292,12 @@
                     body: JSON.stringify({
                         lesson_id: currentActiveTask.lessonId,
                         task_id: currentActiveTask.task.id,
-                        code: code
+                        code: code,
+                        duration_seconds: durationSeconds
                     })
                 });
                 const data = await res.json();
-                showResult(data.passed, data.output, data.error, data.feedback);
+                showResult(data.passed, data.output, data.error, data.feedback, data.duration_seconds || durationSeconds);
 
                 if (data.passed) {
                     await fetchPlatformState();
@@ -1264,7 +1315,7 @@
             }
         }
 
-        function showResult(passed, output, error, feedback) {
+        function showResult(passed, output, error, feedback, durationSeconds) {
             const box = document.getElementById('result-box');
             const title = document.getElementById('result-title');
             const feedbackEl = document.getElementById('result-feedback');
@@ -1274,7 +1325,8 @@
             box.className = 'result-box ' + (passed ? 'pass' : 'fail');
 
             title.style.color = passed ? '#34d399' : '#f87171';
-            title.textContent = passed ? '✓ تم الاجتياز بنجاح!' : '✕ لم يتم الاجتياز بعد';
+            const timeTag = (passed && durationSeconds) ? ` في ${durationSeconds} ثانية! ⏱️` : '';
+            title.textContent = passed ? `✓ تم الاجتياز بنجاح${timeTag}` : '✕ لم يتم الاجتياز بعد';
             feedbackEl.style.color = passed ? '#6ee7b7' : '#fca5a5';
 
             feedbackEl.textContent = feedback || '';
@@ -1318,6 +1370,8 @@
                 document.getElementById('admin-stat-users').textContent = data.total_users || 0;
                 document.getElementById('admin-stat-tasks').textContent = data.total_tasks_solved || 0;
                 document.getElementById('admin-stat-lessons').textContent = data.total_lessons_completed || 0;
+                const statSpeed = document.getElementById('admin-stat-speed');
+                if (statSpeed) statSpeed.textContent = (data.avg_solve_seconds || 0) + ' ث';
                 const statInquiries = document.getElementById('admin-stat-inquiries');
                 if (statInquiries) statInquiries.textContent = data.total_inquiries || 0;
                 const statSubmissions = document.getElementById('admin-stat-submissions');
@@ -1352,7 +1406,7 @@
 
                 // Render Students
                 if (!data.students || data.students.length === 0) {
-                    studentsTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 14px;">لا يوجد طلاب مسجلين حتى الآن</td></tr>';
+                    studentsTbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #9ca3af; padding: 14px;">لا يوجد طلاب مسجلين حتى الآن</td></tr>';
                 } else {
                     studentsTbody.innerHTML = data.students.map(s => {
                         const isMainAdmin = s.role === 'admin';
@@ -1370,6 +1424,7 @@
                                     </span>
                                 </td>
                                 <td style="padding: 8px 10px; color: #34d399; font-weight: 700;">${s.solved_tasks} مهام</td>
+                                <td style="padding: 8px 10px; color: #38bdf8; font-weight: 700; font-family: monospace;">${s.avg_solve_seconds ? `⏱️ ${s.avg_solve_seconds} ث` : '—'}</td>
                                 <td style="padding: 8px 10px; color: #cbd5e1; font-size: 0.75rem;">${s.last_login ? s.last_login : 'لم يسجل'}</td>
                                 <td style="padding: 8px 10px; text-align: center;">${deleteBtn}</td>
                             </tr>
@@ -1419,20 +1474,24 @@
                 const codesTbody = document.getElementById('admin-codes-tbody');
                 if (codesTbody) {
                     if (!data.task_submissions || data.task_submissions.length === 0) {
-                        codesTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد أكواد مرسلة حتى الآن</td></tr>';
+                        codesTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد أكواد مرسلة حتى الآن</td></tr>';
                     } else {
                         codesTbody.innerHTML = data.task_submissions.map(ts => {
                             const statusBadge = ts.passed 
                                 ? '<span style="color: #34d399; font-weight:700;">✓ ناجح</span>'
                                 : '<span style="color: #f87171; font-weight:700;">✕ لم يجتز</span>';
+                            const solveTimeHtml = ts.duration_seconds > 0 
+                                ? `<span style="color: #38bdf8; font-weight: 700; font-family: monospace;">⏱️ ${ts.duration_seconds} ثانية</span>`
+                                : `<span style="color: #9ca3af; font-size: 0.75rem;">—</span>`;
                             return `
                                 <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4);">
                                     <td style="padding: 8px 10px; font-weight: 700; color: #fff;">${ts.username}</td>
                                     <td style="padding: 8px 10px; color: #94a3b8; font-family: monospace;">${ts.task_id} (${ts.lesson_id})</td>
                                     <td style="padding: 8px 10px;">${statusBadge}</td>
+                                    <td style="padding: 8px 10px;">${solveTimeHtml}</td>
                                     <td style="padding: 8px 10px; color: #cbd5e1; font-size: 0.72rem; white-space: nowrap;">${ts.created_at}</td>
                                     <td style="padding: 8px 10px; text-align: center;">
-                                        <button onclick='viewCodeInspectorModal(${JSON.stringify(ts.username)}, ${JSON.stringify(ts.task_id)}, ${JSON.stringify(ts.code)}, ${JSON.stringify(ts.output)})' class="btn-secondary" style="padding: 2px 8px; font-size: 0.72rem; color: #34d399;">
+                                        <button onclick='viewCodeInspectorModal(${JSON.stringify(ts.username)}, ${JSON.stringify(ts.task_id)}, ${JSON.stringify(ts.code)}, ${JSON.stringify(ts.output)}, ${ts.duration_seconds || 0})' class="btn-secondary" style="padding: 2px 8px; font-size: 0.72rem; color: #34d399;">
                                             👁️ معاينة الكود
                                         </button>
                                     </td>
@@ -1472,8 +1531,9 @@
             });
         }
 
-        function viewCodeInspectorModal(username, taskId, code, output) {
-            alert(`💻 كود الطالب: [${username}] للمهمة [${taskId}]\n\n--- الكود المكتوب ---\n${code}\n\n--- مخرجات الـ Terminal ---\n${output || '(لا توجد مخرجات)'}`);
+        function viewCodeInspectorModal(username, taskId, code, output, durationSeconds) {
+            const timeInfo = durationSeconds ? `⏱️ وقت استغراق الحل: ${durationSeconds} ثانية\n` : '';
+            alert(`💻 كود الطالب: [${username}] للمهمة [${taskId}]\n${timeInfo}\n--- الكود المكتوب ---\n${code}\n\n--- مخرجات الـ Terminal ---\n${output || '(لا توجد مخرجات)'}`);
         }
 
         async function submitAdminNewTask() {

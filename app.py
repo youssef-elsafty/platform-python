@@ -318,6 +318,14 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             lesson_id = body_data.get("lesson_id")
             task_id = body_data.get("task_id")
             code = str(body_data.get("code", ""))
+            try:
+                duration_seconds = int(body_data.get("duration_seconds") or 0)
+                if duration_seconds < 0:
+                    duration_seconds = 0
+                elif duration_seconds > 86400:
+                    duration_seconds = 86400
+            except (ValueError, TypeError):
+                duration_seconds = 0
 
             if len(code) > 10000:
                 return self.send_json({"passed": False, "feedback": "حجم الكود تجاوز الحد الأقصى المسموح به."}, status=400)
@@ -333,19 +341,21 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 return self.send_json({"passed": False, "feedback": "المهمة غير موجودة"}, status=404)
 
             eval_res = engine.evaluate_task(target_task, code)
+            eval_res["duration_seconds"] = duration_seconds
             
-            # Record submission for the admin dashboard to inspect actual code, timestamp, user, and status
+            # Record submission for the admin dashboard to inspect actual code, timestamp, user, duration, and status
             db.record_task_submission(
                 user_id=current_user["id"],
                 task_id=task_id,
                 lesson_id=lesson_id,
                 code=code,
                 passed=eval_res["passed"],
-                output=eval_res.get("output", "")
+                output=eval_res.get("output", ""),
+                duration_seconds=duration_seconds
             )
 
             if eval_res["passed"]:
-                db.mark_task_done(current_user["id"], task_id, lesson_id)
+                db.mark_task_done(current_user["id"], task_id, lesson_id, duration_seconds=duration_seconds)
                 state = engine.get_platform_state(user_id=current_user["id"])
                 lesson_status = next((l for l in state["lessons"] if l["id"] == lesson_id), None)
                 eval_res["lesson_completed"] = lesson_status["completed"] if lesson_status else False

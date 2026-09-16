@@ -5,7 +5,8 @@ import glob
 from runner import run_isolated_code
 from db import (
     init_db, mark_task_done, mark_lesson_done,
-    get_completed_task_ids, get_completed_lesson_ids, reset_user_progress
+    get_completed_task_ids, get_completed_lesson_ids, reset_user_progress,
+    get_user_avg_solve_seconds
 )
 
 LESSONS_DIR = "lessons"
@@ -77,10 +78,13 @@ def get_platform_state(user_id=None):
                 "completed_tasks": done_tasks_count
             })
 
+    avg_speed = get_user_avg_solve_seconds(user_id) if user_id else 0
+
     return {
         "lessons": lesson_statuses,
         "completed_tasks": list(completed_tasks),
-        "completed_lessons": list(completed_lessons)
+        "completed_lessons": list(completed_lessons),
+        "avg_speed_seconds": avg_speed
     }
 
 def execute_code_safely(code, timeout=4):
