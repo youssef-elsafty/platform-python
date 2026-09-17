@@ -267,6 +267,25 @@
                 </div>
             </div>
 
+            <!-- Dedicated Open Exams Card for Students -->
+            <div id="student-exams-section" class="card" style="border-color: rgba(239, 68, 68, 0.4); background: linear-gradient(135deg, rgba(69, 10, 10, 0.4), rgba(17, 24, 39, 0.9)); margin-top: 16px;">
+                <div class="card-header">
+                    <div class="card-title" style="color: #f87171;">
+                        <span>📝</span> الامتحانات والاختبارات المتاحة (Live Open Exams)
+                    </div>
+                    <span class="task-badge-direct" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4);">تحكم المشرف 🔒</span>
+                </div>
+                <p style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">
+                    الامتحانات المفتوحة حالياً من قِبل المشرف. إذا لم تظهر امتحانات هنا، فهذا يعني أن جميع الامتحانات مغلقة أو لم يأتِ موعدها بعد.
+                </p>
+
+                <div id="student-open-exams-list" style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="background: rgba(3, 7, 18, 0.6); padding: 16px; border-radius: 12px; border: 1px dashed rgba(239, 68, 68, 0.3); text-align: center; color: #9ca3af; font-size: 0.85rem;">
+                        🔒 لا توجد امتحانات مفتوحة حالياً. سيقوم المشرف بفتح الامتحان في الموعد المحدد.
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -303,7 +322,7 @@
                         </div>
                     </div>
                     <div id="upload-status-pill" style="display: none; padding: 6px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 0.78rem;"></div>
-                    <textarea id="code-editor" class="code-textarea" rows="8" spellcheck="false" placeholder="# يمكنك كتابة الكود هنا أو رفع ملف الحل مباشرة من زر الرفع بالأعلى"></textarea>
+                    <textarea id="code-editor" class="code-textarea" rows="8" spellcheck="false" oninput="triggerAutoSaveDraft()" placeholder="# يمكنك كتابة الكود هنا أو رفع ملف الحل مباشرة من زر الرفع بالأعلى"></textarea>
                 </div>
 
                 <!-- Result Box With Creative Punchline -->
@@ -323,6 +342,9 @@
 
             <div class="modal-footer">
                 <div class="modal-footer-actions">
+                    <button id="btn-save-draft" onclick="manualSaveDraft()" class="btn-secondary" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
+                        💾 حفظ مسودة
+                    </button>
                     <button id="btn-run-code" onclick="testRunCode()" class="btn-secondary">
                         ▶️ تجربة الكود
                     </button>
@@ -332,6 +354,60 @@
                 </div>
                 <button onclick="closeEditor()" class="btn-secondary" style="color: var(--text-dim);">
                     إغلاق المحرر
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Exam Execution Modal -->
+    <div id="student-exam-modal" class="modal-backdrop hidden">
+        <div class="modal-content" style="max-width: 850px; max-height: 94vh;">
+            <div class="modal-header" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span class="exam-badge-open">📝 امتحان رسمي</span>
+                    <h4 id="student-exam-modal-title" style="color: #fff; font-weight: 800; margin: 0;">جاري تحميل الامتحان...</h4>
+                    <span id="student-exam-timer" class="exam-timer-pill" style="display: none;">
+                        ⏱️ <span id="student-timer-display">00:00</span>
+                    </span>
+                </div>
+                <button onclick="closeStudentExamModal()" style="background:none; border:none; color:#9ca3af; font-size:1.5rem; cursor:pointer;">✕</button>
+            </div>
+
+            <div class="modal-body" style="gap: 14px;">
+                <!-- Locked Warning Banner -->
+                <div id="student-exam-locked-banner" style="display: none; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 10px; padding: 12px; color: #f87171; font-weight: 700; font-size: 0.85rem;">
+                    ⚠️ تنبيه عاجل: لقد قام المشرف بقفل هذا الامتحان الآن! لا يمكنك إرسال أي إجابات بعد هذا الوقت 🔒
+                </div>
+
+                <div class="task-prompt-box" style="border-color: rgba(239, 68, 68, 0.3);">
+                    <div style="font-weight: 700; color: #f87171; margin-bottom: 4px;">📌 تعليمات الامتحان:</div>
+                    <div id="student-exam-instructions-display" style="color: #d1d5db; white-space: pre-line;"></div>
+                </div>
+
+                <!-- Questions Container -->
+                <div id="student-exam-questions-container" style="display: flex; flex-direction: column; gap: 14px;">
+                    <!-- Question Cards dynamically injected -->
+                </div>
+
+                <!-- File Upload Option for Exam Solution -->
+                <div style="background: rgba(3, 7, 18, 0.6); padding: 14px; border-radius: 12px; border: 1px dashed rgba(245, 158, 11, 0.4);">
+                    <div style="font-size: 0.82rem; font-weight: 700; color: #fbbf24; margin-bottom: 6px;">📁 خيار رفع ملف الحل الكامل للامتحان (اختياري / ملف .py أو .pdf أو .zip):</div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label for="exam-solution-file-input" class="btn-action" style="padding: 6px 14px; font-size: 0.8rem; cursor: pointer; background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+                            <span>📤</span> اختر ملف الحل المرفق
+                        </label>
+                        <input type="file" id="exam-solution-file-input" onchange="handleExamSolutionFileSelect(event)" style="display: none;" accept=".py,.txt,.pdf,.zip,.ipynb">
+                        <span id="exam-solution-file-name" style="font-size: 0.78rem; color: #94a3b8;">لم يتم اختيار ملف</span>
+                    </div>
+                </div>
+
+                <div id="student-exam-status-msg" style="display: none; padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 700;"></div>
+            </div>
+
+            <div class="modal-footer" style="flex-direction: row; gap: 8px;">
+                <button onclick="closeStudentExamModal()" class="btn-secondary" style="flex: 1;">إلغاء وإغلاق</button>
+                <button id="btn-submit-student-exam" onclick="submitStudentExam()" class="btn-action" style="flex: 2; background: linear-gradient(135deg, #ef4444, #dc2626); border: none;">
+                    🚀 إرسال وتكليف الإجابات النهائي
                 </button>
             </div>
         </div>
@@ -392,6 +468,9 @@
                 <button id="adm-tab-btn-students" onclick="switchAdminTab('students')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
                     👥 إدارة الطلاب (<span id="adm-badge-users">0</span>)
                 </button>
+                <button id="adm-tab-btn-tasks" onclick="switchAdminTab('tasks')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; color: #f59e0b; border-color: rgba(245, 158, 11, 0.4);">
+                    📌 التحكم بالتاسكات والدروس
+                </button>
                 <button id="adm-tab-btn-submissions" onclick="switchAdminTab('submissions')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; color: #a78bfa; border-color: rgba(167, 139, 250, 0.4);">
                     📁 ملفات وتكليفات الطلاب (<span id="adm-badge-files">0</span>)
                 </button>
@@ -403,6 +482,9 @@
                 </button>
                 <button id="adm-tab-btn-inquiries" onclick="switchAdminTab('inquiries')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
                     📨 الرسائل والدعم (<span id="adm-badge-inquiries">0</span>)
+                </button>
+                <button id="adm-tab-btn-exams" onclick="switchAdminTab('exams')" class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; color: #ef4444; border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.1);">
+                    🔒 التحكم في الامتحانات (<span id="adm-badge-exams">0</span>)
                 </button>
             </div>
 
@@ -495,17 +577,30 @@
                                     <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
                                         <th style="padding: 10px;">المستخدم</th>
                                         <th style="padding: 10px;">البريد الإلكتروني</th>
-                                        <th style="padding: 10px;">الرتبة</th>
+                                        <th style="padding: 10px;">الرتبة والحالة</th>
                                         <th style="padding: 10px;">المهام المحلولة</th>
                                         <th style="padding: 10px;">متوسط وقت الحل</th>
                                         <th style="padding: 10px;">آخر ظهور</th>
-                                        <th style="padding: 10px; text-align: center;">إجراءات</th>
+                                        <th style="padding: 10px; text-align: center;">إجراءات المشرف</th>
                                     </tr>
                                 </thead>
                                 <tbody id="admin-students-tbody">
                                     <tr><td colspan="7" style="text-align: center; color: #9ca3af; padding: 16px;">جاري التحميل...</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: TASKS AND LESSONS CONTROL -->
+                <div id="adm-tab-tasks" style="display: none;">
+                    <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; overflow: hidden; padding: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                            <span style="font-weight: 800; color: #fbbf24; font-size: 0.9rem;">📌 التحكم بفتح/قفل وحذف التاسكات والدروس:</span>
+                            <button onclick="fetchAdminStats(); renderRoadmap();" class="btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">🔄 تحديث القائمة</button>
+                        </div>
+                        <div id="admin-tasks-control-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 420px; overflow-y: auto;">
+                            <!-- Dynamically loaded lessons & tasks control cards -->
                         </div>
                     </div>
                 </div>
@@ -660,6 +755,91 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- TAB 7: EXAM CONTROL CENTER -->
+                <div id="adm-tab-exams" style="display: none;">
+                    <!-- Create New Exam Form Card -->
+                    <div style="background: rgba(17, 24, 39, 0.85); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; border-bottom: 1px solid rgba(239, 68, 68, 0.2); padding-bottom: 8px;">
+                            <span style="font-size: 1.4rem;">🔒</span>
+                            <div>
+                                <h4 style="color: #f87171; margin: 0; font-weight: 800;">إدارة ورفع الامتحانات والاختبارات</h4>
+                                <span style="font-size: 0.75rem; color: #9ca3af;">أي امتحان تقوم برفعه يظل (مغلقاً وسرياً 🔴) افتراضياً ولا يراه أي طالب إلا عندما تضغط زر 'فتح الامتحان 🟢'</span>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px;">
+                            <div>
+                                <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">عنوان الامتحان (Exam Title):</label>
+                                <input id="adm-exam-title" type="text" class="code-textarea" style="min-height: 38px; height: 38px; padding: 6px 10px; font-size: 0.85rem;" placeholder="مثال: امتحان منتصف الفصل - أساسيات بايثون والخوارزميات">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">مدة الامتحان بالدقائق (Duration):</label>
+                                <input id="adm-exam-duration" type="number" min="0" value="45" class="code-textarea" style="min-height: 38px; height: 38px; padding: 6px 10px; font-size: 0.85rem;" placeholder="مثال: 45 دقيقة (0 = بدون وقت)">
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">وصف قصير للامتحان (Description):</label>
+                            <input id="adm-exam-desc" type="text" class="code-textarea" style="min-height: 38px; height: 38px; padding: 6px 10px; font-size: 0.85rem;" placeholder="مثال: اختبار شامل على الدوال والقواميس والـ Conditionals">
+                        </div>
+
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 4px;">التعليمات وتوجيهات الطلاب (Instructions):</label>
+                            <textarea id="adm-exam-instructions" class="code-textarea" rows="2" placeholder="اكتب التوجيهات، مثل: ممنوع الاستعانة بمصادر خارجية، يرجى الالتزام بالوقت المحدد..."></textarea>
+                        </div>
+
+                        <div style="background: rgba(3, 7, 18, 0.6); padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 14px;">
+                            <div style="font-size: 0.82rem; font-weight: 700; color: #fbbf24; margin-bottom: 8px;">🧩 إضافة سؤال برمجي للامتحان (اختياري):</div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <input id="adm-exam-q-title" type="text" class="code-textarea" style="min-height: 34px; height: 34px; padding: 4px 8px; font-size: 0.8rem;" placeholder="عنوان السؤال: مثال: السؤال الأول - طباعة الأعداد الزوجية">
+                                <textarea id="adm-exam-q-instruction" class="code-textarea" rows="2" placeholder="المطلوب من الطالب بالسؤال..."></textarea>
+                                <input id="adm-exam-q-expected" type="text" class="code-textarea" style="min-height: 34px; height: 34px; padding: 4px 8px; font-size: 0.8rem;" placeholder="المخرجات المتوقعة للاجتياز (Expected Output)...">
+                            </div>
+                        </div>
+
+                        <div id="adm-exam-create-status" style="display: none; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; font-size: 0.82rem;"></div>
+
+                        <button onclick="submitAdminNewExam()" class="btn-action" style="width: 100%; padding: 10px; font-size: 0.9rem; font-weight: 700; background: linear-gradient(135deg, #ef4444, #dc2626); border: none;">
+                            🚀 حفظ وإنشاء الامتحان (مغلق وسري 🔒)
+                        </button>
+                    </div>
+
+                    <!-- Exams Control List (Toggle Open / Lock) -->
+                    <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
+                        <div style="padding: 10px 14px; background: rgba(17, 24, 39, 0.9); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700; color: #f87171; font-size: 0.85rem;">🔒 لوحة تمرير وتسميع الامتحانات (فتح / قفل بنقرة واحدة):</span>
+                            <span style="font-size: 0.72rem; color: #94a3b8;">المتحكم الفوري في إتاحة الامتحان للطلاب</span>
+                        </div>
+                        <div id="admin-exams-list" style="padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+                            <div style="text-align: center; color: #9ca3af; padding: 12px;">جاري تحميل الامتحانات...</div>
+                        </div>
+                    </div>
+
+                    <!-- Exam Submissions Table -->
+                    <div style="background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; overflow: hidden;">
+                        <div style="padding: 10px 14px; background: rgba(120, 53, 15, 0.3); border-bottom: 1px solid rgba(245, 158, 11, 0.3); display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700; color: #fbbf24; font-size: 0.85rem;">📊 سجل نتائج وتسليمات إجابات الطلاب في الامتحانات:</span>
+                        </div>
+                        <div style="overflow-x: auto; max-height: 320px;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.78rem;">
+                                <thead>
+                                    <tr style="background: rgba(17, 24, 39, 0.5); color: #94a3b8; border-bottom: 1px solid var(--border-color);">
+                                        <th style="padding: 8px 10px;">الامتحان</th>
+                                        <th style="padding: 8px 10px;">الطالب</th>
+                                        <th style="padding: 8px 10px;">الدرجة</th>
+                                        <th style="padding: 8px 10px;">ملف الحل</th>
+                                        <th style="padding: 8px 10px;">وقت التسليم</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-exam-submissions-tbody">
+                                    <tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد تسليمات امتحانات حتى الآن</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
 
             </div>
 
@@ -927,6 +1107,7 @@
 
                 // Dynamic notification broadcast check
                 checkAndNotifyNewTasks();
+                fetchOpenExamsForStudents();
             } catch (err) {
                 console.error("Error fetching state:", err);
             }
@@ -1099,15 +1280,27 @@
 
         function createTaskCard(task, lessonId, isCumulative) {
             const card = document.createElement('div');
-            card.className = `task-card ${task.completed ? 'completed' : ''}`;
+            const isClosed = task.is_open === false || (platformState && platformState.task_status_map && platformState.task_status_map[task.id] === false);
+            const isAdmin = platformState && platformState.user && platformState.user.role === 'admin';
+            
+            card.className = `task-card ${task.completed ? 'completed' : ''} ${isClosed ? 'locked' : ''}`;
             
             const badge = isCumulative 
                 ? '<span class="task-badge-cumulative">مراجعة تراكمية شاملة</span>'
                 : '<span class="task-badge-direct">مهمة الدرس</span>';
 
-            const status = task.completed
-                ? '<span style="color:#34d399; font-weight:700; font-size:0.75rem;">✓ منجزة بنجاح</span>'
-                : '<span style="color:#9ca3af; font-size:0.75rem;">بانتظار الحل</span>';
+            let status = '';
+            if (isClosed) {
+                status = '<span style="color:#f87171; font-weight:700; font-size:0.75rem;">🔒 مغلقة من المشرف</span>';
+            } else if (task.completed) {
+                status = '<span style="color:#34d399; font-weight:700; font-size:0.75rem;">✓ منجزة بنجاح</span>';
+            } else {
+                status = '<span style="color:#9ca3af; font-size:0.75rem;">بانتظار الحل</span>';
+            }
+
+            const btnText = (isClosed && !isAdmin)
+                ? 'مغلقة 🔒'
+                : (task.completed ? 'تعديل الحل 📝' : 'حل المهمة 💻');
 
             card.innerHTML = `
                 <div class="task-info">
@@ -1120,8 +1313,8 @@
                     <div class="task-desc">${task.instruction}</div>
                 </div>
                 <div>
-                    <button onclick='openEditor(${JSON.stringify(task)}, "${lessonId}")' class="btn-action ${task.completed ? 'btn-done' : ''}">
-                        ${task.completed ? 'تعديل الحل 📝' : 'حل المهمة 💻'}
+                    <button onclick='openEditor(${JSON.stringify(task)}, "${lessonId}")' class="btn-action ${task.completed ? 'btn-done' : ''} ${(isClosed && !isAdmin) ? 'btn-secondary' : ''}">
+                        ${btnText}
                     </button>
                 </div>
             `;
@@ -1152,12 +1345,101 @@
             }
         }
 
+        let autoSaveTimeout = null;
+
+        function triggerAutoSaveDraft() {
+            if (!currentActiveTask || !platformState || !platformState.user) return;
+            const code = document.getElementById('code-editor').value;
+            const taskId = currentActiveTask.task.id;
+            
+            if (!platformState.user_codes) platformState.user_codes = {};
+            platformState.user_codes[taskId] = code;
+
+            if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(async () => {
+                try {
+                    await fetch('/api/save-code-draft', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ task_id: taskId, code: code })
+                    });
+                    const pill = document.getElementById('upload-status-pill');
+                    if (pill) {
+                        pill.style.display = 'block';
+                        pill.style.background = 'rgba(52, 211, 153, 0.15)';
+                        pill.style.border = '1px solid rgba(52, 211, 153, 0.4)';
+                        pill.style.color = '#34d399';
+                        pill.innerHTML = `<span>✓ تم حفظ مسودة كودك تلقائياً بحسابك 💾</span>`;
+                    }
+                } catch (e) {
+                    console.error("Auto-save failed:", e);
+                }
+            }, 1500);
+        }
+
+        async function manualSaveDraft() {
+            if (!currentActiveTask) return;
+            if (!platformState || !platformState.user) {
+                alert("يرجى تسجيل الدخول أولاً لحفظ مسودات الأكواد");
+                openAuthModal();
+                return;
+            }
+            const code = document.getElementById('code-editor').value;
+            const taskId = currentActiveTask.task.id;
+            const btn = document.getElementById('btn-save-draft');
+            if (btn) btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/save-code-draft', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: taskId, code: code })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (!platformState.user_codes) platformState.user_codes = {};
+                    platformState.user_codes[taskId] = code;
+
+                    const pill = document.getElementById('upload-status-pill');
+                    if (pill) {
+                        pill.style.display = 'block';
+                        pill.style.background = 'rgba(52, 211, 153, 0.2)';
+                        pill.style.border = '1px solid rgba(52, 211, 153, 0.5)';
+                        pill.style.color = '#4ade80';
+                        pill.innerHTML = `<span>✓ تم حفظ كود المهمة بالكامل في حسابك بنجاح! 💾</span>`;
+                    }
+                } else {
+                    alert(data.error || "فشل حفظ الكود");
+                }
+            } catch (e) {
+                alert("خطأ في الاتصال بالسيرفر");
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
         function openEditor(task, lessonId) {
+            const isClosed = task.is_open === false || (platformState && platformState.task_status_map && platformState.task_status_map[task.id] === false);
+            const isAdmin = platformState && platformState.user && platformState.user.role === 'admin';
+            
+            if (isClosed && !isAdmin) {
+                alert("🔒 عذراً! هذه المهمة البرمجية مغلقة وسرية حالياً من قِبل المشرف، ولن تفتح إلا بإذن المشرف.");
+                return;
+            }
+
             currentActiveTask = { task, lessonId };
             document.getElementById('modal-task-title').textContent = task.title;
             document.getElementById('modal-task-instruction').textContent = task.instruction;
-            document.getElementById('code-editor').value = task.starter_code || "# اكتب كود بايثون هنا\n";
             
+            // Restore persistent user saved code/submission if exists!
+            const savedCode = (platformState && platformState.user_codes) ? platformState.user_codes[task.id] : null;
+            const editor = document.getElementById('code-editor');
+            if (savedCode && savedCode.trim()) {
+                editor.value = savedCode;
+            } else {
+                editor.value = task.starter_code || "# اكتب كود بايثون هنا\n";
+            }
+
             const hintBox = document.getElementById('modal-hint-box');
             hintBox.textContent = "💡 تلميح: " + (task.hint || "لا يوجد تلميح متاح");
             hintBox.style.display = 'none';
@@ -1166,7 +1448,17 @@
             resBox.style.display = 'none';
 
             const uploadPill = document.getElementById('upload-status-pill');
-            if (uploadPill) uploadPill.style.display = 'none';
+            if (uploadPill) {
+                if (savedCode) {
+                    uploadPill.style.display = 'block';
+                    uploadPill.style.background = 'rgba(52, 211, 153, 0.15)';
+                    uploadPill.style.border = '1px solid rgba(52, 211, 153, 0.4)';
+                    uploadPill.style.color = '#34d399';
+                    uploadPill.innerHTML = `<span>✓ تم استرجاع كودك المحفوظ سابقاً من السيرفر.</span>`;
+                } else {
+                    uploadPill.style.display = 'none';
+                }
+            }
 
             startTaskTimer();
             document.getElementById('code-modal').classList.remove('hidden');
@@ -1409,27 +1701,116 @@
                     studentsTbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #9ca3af; padding: 14px;">لا يوجد طلاب مسجلين حتى الآن</td></tr>';
                 } else {
                     studentsTbody.innerHTML = data.students.map(s => {
-                        const isMainAdmin = s.role === 'admin';
+                        const isMainAdmin = s.username.toLowerCase() === 'youssef';
+                        const isBanned = s.is_active === 0 || s.is_active === false;
+                        const isStudentAdmin = s.role === 'admin';
+                        
+                        const roleBtn = isMainAdmin ? '' : `
+                            <button onclick="updateStudentRole('${s.id}', '${isStudentAdmin ? 'student' : 'admin'}')" class="btn-secondary" style="padding: 2px 6px; font-size: 0.7rem; color: ${isStudentAdmin ? '#38bdf8' : '#fbbf24'}; margin-left: 4px;">
+                                ${isStudentAdmin ? '🎓 تحويل لطالب' : '👑 ترقية لمشرف'}
+                            </button>
+                        `;
+
+                        const activeBtn = isMainAdmin ? '' : `
+                            <button onclick="toggleStudentActiveStatus('${s.id}', ${isBanned ? 'true' : 'false'})" class="btn-secondary" style="padding: 2px 6px; font-size: 0.7rem; color: ${isBanned ? '#34d399' : '#f87171'}; border-color: ${isBanned ? 'rgba(52, 211, 153, 0.4)' : 'rgba(239, 68, 68, 0.4)'}; margin-left: 4px;">
+                                ${isBanned ? '🟢 تفعيل' : '⛔ حظر'}
+                            </button>
+                        `;
+
                         const deleteBtn = isMainAdmin 
                             ? '<span style="color: #9ca3af; font-size: 0.75rem;">—</span>' 
-                            : `<button onclick="deleteStudentUser('${s.id}', '${s.username}')" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; cursor: pointer;">🗑️ حذف</button>`;
+                            : `<button onclick="deleteStudentUser('${s.id}', '${s.username}')" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 2px 6px; border-radius: 6px; font-size: 0.7rem; cursor: pointer;">🗑️ حذف</button>`;
+
+                        const statusPill = isBanned
+                            ? '<span style="font-size: 0.7rem; padding: 2px 5px; border-radius: 4px; background: rgba(239, 68, 68, 0.2); color: #f87171;">⛔ محظور</span>'
+                            : '<span style="font-size: 0.7rem; padding: 2px 5px; border-radius: 4px; background: rgba(34, 197, 94, 0.2); color: #4ade80;">🟢 نشط</span>';
+
+                        const rolePill = isStudentAdmin
+                            ? '<span style="font-size: 0.7rem; padding: 2px 5px; border-radius: 4px; background: rgba(245, 158, 11, 0.2); color: #fbbf24;">👑 مشرف</span>'
+                            : '<span style="font-size: 0.7rem; padding: 2px 5px; border-radius: 4px; background: rgba(59, 130, 246, 0.2); color: #60a5fa;">طالب</span>';
 
                         return `
                             <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.5);">
                                 <td style="padding: 8px 10px; font-weight: 700; color: #fff;">${s.username}</td>
-                                <td style="padding: 8px 10px; color: #94a3b8;">${s.email}</td>
-                                <td style="padding: 8px 10px;">
-                                    <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; ${isMainAdmin ? 'background: rgba(245, 158, 11, 0.2); color: #fbbf24;' : 'background: rgba(59, 130, 246, 0.2); color: #60a5fa;'}">
-                                        ${isMainAdmin ? '👑 مشرف' : 'طالب'}
-                                    </span>
-                                </td>
+                                <td style="padding: 8px 10px; color: #94a3b8; font-size: 0.78rem;">${s.email}</td>
+                                <td style="padding: 8px 10px;">${rolePill} ${statusPill}</td>
                                 <td style="padding: 8px 10px; color: #34d399; font-weight: 700;">${s.solved_tasks} مهام</td>
                                 <td style="padding: 8px 10px; color: #38bdf8; font-weight: 700; font-family: monospace;">${s.avg_solve_seconds ? `⏱️ ${s.avg_solve_seconds} ث` : '—'}</td>
-                                <td style="padding: 8px 10px; color: #cbd5e1; font-size: 0.75rem;">${s.last_login ? s.last_login : 'لم يسجل'}</td>
-                                <td style="padding: 8px 10px; text-align: center;">${deleteBtn}</td>
+                                <td style="padding: 8px 10px; color: #cbd5e1; font-size: 0.72rem;">${s.last_login ? s.last_login : 'لم يسجل'}</td>
+                                <td style="padding: 8px 10px; text-align: center; white-space: nowrap;">
+                                    ${roleBtn}
+                                    ${activeBtn}
+                                    ${deleteBtn}
+                                </td>
                             </tr>
                         `;
                     }).join('');
+                }
+
+                // Render Tasks & Lessons Control List
+                const tasksControlList = document.getElementById('admin-tasks-control-list');
+                if (tasksControlList && platformState && platformState.lessons) {
+                    const statusMap = platformState.task_status_map || {};
+                    tasksControlList.innerHTML = platformState.lessons.map(lesson => {
+                        const lessonIsOpen = statusMap[lesson.id] !== false;
+                        const lessonToggleBtn = lessonIsOpen
+                            ? `<button onclick="toggleTaskStatus('${lesson.id}', false)" class="btn-secondary btn-danger" style="padding: 3px 8px; font-size: 0.72rem;">🔴 قفل الدرس بالكامل</button>`
+                            : `<button onclick="toggleTaskStatus('${lesson.id}', true)" class="btn-secondary" style="padding: 3px 8px; font-size: 0.72rem; color: #34d399; border-color: rgba(52, 211, 153, 0.4);">🟢 فتح الدرس بالكامل</button>`;
+                        
+                        return `
+                            <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                                    <div>
+                                        <span class="category-tag">${lesson.track === 'university' ? '🎓 قسم الجامعات' : '🐍 المسار العام'}</span>
+                                        <strong style="color: #fff; font-size: 0.88rem; margin-right: 6px;">${lesson.title}</strong>
+                                    </div>
+                                    <div style="display: flex; gap: 6px;">
+                                        ${lessonToggleBtn}
+                                        <button onclick="deleteTaskOrLesson('${lesson.id}')" class="btn-secondary btn-danger" style="padding: 3px 8px; font-size: 0.72rem;">🗑️ حذف الدرس</button>
+                                    </div>
+                                </div>
+                                <div style="font-size: 0.78rem; color: #9ca3af; margin-bottom: 6px;">التاسكات البرمجية التابعة لهذا الدرس:</div>
+                                <div id="lesson-tasks-ctl-${lesson.id}" style="display: flex; flex-direction: column; gap: 6px;">
+                                    <div style="font-size: 0.75rem; color: #64748b;">جاري تحميل المهام...</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    // Asynchronously fetch task details for each lesson
+                    platformState.lessons.forEach(async lesson => {
+                        try {
+                            const res = await fetch(`/api/lesson/${lesson.id}`);
+                            if (res.ok) {
+                                const lData = await res.json();
+                                const ctlContainer = document.getElementById(`lesson-tasks-ctl-${lesson.id}`);
+                                if (!ctlContainer) return;
+                                const allLTasks = (lData.tasks || []).concat(lData.cumulative_tasks || []);
+                                if (allLTasks.length === 0) {
+                                    ctlContainer.innerHTML = '<div style="font-size: 0.75rem; color: #9ca3af;">لا توجد مهام داخل هذا الدرس</div>';
+                                } else {
+                                    ctlContainer.innerHTML = allLTasks.map(t => {
+                                        const isTaskOpen = t.is_open !== false && statusMap[t.id] !== false;
+                                        const tToggleBtn = isTaskOpen
+                                            ? `<button onclick="toggleTaskStatus('${t.id}', false)" class="btn-secondary btn-danger" style="padding: 2px 6px; font-size: 0.7rem;">🔴 قفل المهمة</button>`
+                                            : `<button onclick="toggleTaskStatus('${t.id}', true)" class="btn-secondary" style="padding: 2px 6px; font-size: 0.7rem; color: #34d399; border-color: rgba(52, 211, 153, 0.4);">🟢 فتح المهمة</button>`;
+                                        return `
+                                            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(3, 7, 18, 0.6); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem; border: 1px solid rgba(51, 65, 85, 0.4);">
+                                                <div>
+                                                    <span style="color: ${isTaskOpen ? '#34d399' : '#f87171'}; font-weight: 700; margin-left: 4px;">${isTaskOpen ? '🟢 مفتوحة' : '🔴 مغلقة'}</span>
+                                                    <span style="color: #e2e8f0;">${t.title}</span>
+                                                </div>
+                                                <div style="display: flex; gap: 4px;">
+                                                    ${tToggleBtn}
+                                                    <button onclick="deleteTaskOrLesson('${t.id}')" class="btn-secondary btn-danger" style="padding: 2px 6px; font-size: 0.7rem;">🗑️ حذف المهمة</button>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('');
+                                }
+                            }
+                        } catch(e){}
+                    });
                 }
 
                 // Render Logins
@@ -1469,6 +1850,8 @@
                 if (bFiles) bFiles.textContent = data.total_uploaded_submissions || (data.uploaded_submissions ? data.uploaded_submissions.length : 0);
                 const bInq = document.getElementById('adm-badge-inquiries');
                 if (bInq) bInq.textContent = data.total_inquiries || 0;
+                const bExams = document.getElementById('adm-badge-exams');
+                if (bExams) bExams.textContent = data.total_exams || 0;
 
                 // Render Live Code Submissions
                 const codesTbody = document.getElementById('admin-codes-tbody');
@@ -1501,13 +1884,72 @@
                     }
                 }
 
+                // Render Admin Exams Control List
+                const examsListEl = document.getElementById('admin-exams-list');
+                if (examsListEl) {
+                    if (!data.all_exams || data.all_exams.length === 0) {
+                        examsListEl.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 14px; background: rgba(3,7,18,0.4); border-radius: 10px;">لا توجد امتحانات مضافة حتى الآن. يمكنك إضافة امتحان جديد من الأعلى!</div>';
+                    } else {
+                        examsListEl.innerHTML = data.all_exams.map(ex => {
+                            const isOpen = ex.is_open == 1 || ex.is_open === true;
+                            const badge = isOpen 
+                                ? '<span class="exam-badge-open">🟢 مفتوح حالياً للطلاب (يمكنهم الحل)</span>'
+                                : '<span class="exam-badge-closed">🔴 مغلق وسري 🔒 (لا يراه أي طالب)</span>';
+                            const toggleBtn = isOpen
+                                ? `<button onclick="toggleExamStatus('${ex.id}', false)" class="btn-action" style="background: linear-gradient(135deg, #ef4444, #dc2626); border: none; padding: 6px 14px; font-size: 0.8rem;">🔴 قفل الامتحان فوراً (إخفاء عن الطلاب)</button>`
+                                : `<button onclick="toggleExamStatus('${ex.id}', true)" class="btn-action" style="background: linear-gradient(135deg, #22c55e, #16a34a); border: none; padding: 6px 14px; font-size: 0.8rem;">🟢 فتح الامتحان للطلاب الآن</button>`;
+                            
+                            const durationText = ex.duration_minutes ? `⏱️ المدة: ${ex.duration_minutes} دقيقة` : '⏱️ بدون وقت محدد';
+                            return `
+                                <div class="exam-card ${isOpen ? 'open-exam' : 'closed-exam'}">
+                                    <div class="exam-header">
+                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                            <h4 style="color: #fff; font-weight: 800; margin: 0;">${ex.title}</h4>
+                                            ${badge}
+                                        </div>
+                                        <span class="exam-timer-pill">${durationText}</span>
+                                    </div>
+                                    <p style="color: #94a3b8; font-size: 0.82rem; margin: 4px 0;">${ex.description || 'لا يوجد وصف'}</p>
+                                    <div class="exam-actions">
+                                        ${toggleBtn}
+                                        <button onclick="deleteExam('${ex.id}')" class="btn-secondary btn-danger" style="padding: 6px 12px; font-size: 0.78rem;">🗑️ حذف الامتحان</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+
+                // Render Exam Submissions
+                const examSubsTbody = document.getElementById('admin-exam-submissions-tbody');
+                if (examSubsTbody) {
+                    if (!data.exam_submissions || data.exam_submissions.length === 0) {
+                        examSubsTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 14px;">لا توجد تسليمات امتحانات حتى الآن</td></tr>';
+                    } else {
+                        examSubsTbody.innerHTML = data.exam_submissions.map(es => {
+                            const fileLink = es.uploaded_file 
+                                ? `<a href="/api/admin/download-submission/${encodeURIComponent(es.uploaded_file)}" target="_blank" download class="btn-secondary" style="padding: 2px 8px; font-size: 0.72rem; color: #38bdf8;">📥 تنزيل الملف</a>`
+                                : '<span style="color: #9ca3af; font-size: 0.75rem;">إجابات كتابية</span>';
+                            return `
+                                <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4);">
+                                    <td style="padding: 8px 10px; font-weight: 700; color: #fbbf24;">${es.exam_title}</td>
+                                    <td style="padding: 8px 10px; font-weight: 700; color: #fff;">${es.username}</td>
+                                    <td style="padding: 8px 10px; color: #34d399; font-weight: 800;">${es.score} / ${es.max_score}</td>
+                                    <td style="padding: 8px 10px;">${fileLink}</td>
+                                    <td style="padding: 8px 10px; color: #94a3b8; font-size: 0.72rem; white-space: nowrap;">${es.submitted_at}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                }
+
             } catch (err) {
                 console.error("Error loading admin stats:", err);
             }
         }
 
         function switchAdminTab(tabName) {
-            const tabs = ['overview', 'students', 'submissions', 'codes', 'creator', 'inquiries'];
+            const tabs = ['overview', 'students', 'tasks', 'submissions', 'codes', 'creator', 'inquiries', 'exams'];
             tabs.forEach(t => {
                 const tabEl = document.getElementById(`adm-tab-${t}`);
                 const btnEl = document.getElementById(`adm-tab-btn-${t}`);
@@ -1693,6 +2135,88 @@
                 }
             } catch (err) {
                 alert("خطأ في الاتصال بالخادم");
+            }
+        }
+
+        async function updateStudentRole(userId, newRole) {
+            const roleText = newRole === 'admin' ? 'مشرف 👑' : 'طالب 🎓';
+            if (!confirm(`هل أنت متأكد من رغبتك في تغيير رتبة المستخدم إلى (${roleText})؟`)) return;
+            try {
+                const res = await fetch('/api/admin/users/update-role', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, role: newRole })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✓ ${data.message}`);
+                    fetchAdminStats();
+                } else {
+                    alert(`❌ ${data.error || 'فشل تعديل الرتبة'}`);
+                }
+            } catch (err) {
+                alert("خطأ في الاتصال بالسيرفر");
+            }
+        }
+
+        async function toggleStudentActiveStatus(userId, isActive) {
+            const statusText = isActive ? 'تفعيل الحساب 🟢' : 'حظر الحساب ⛔';
+            if (!confirm(`هل أنت متأكد من رغبتك في ${statusText} هذا المستخدم؟`)) return;
+            try {
+                const res = await fetch('/api/admin/users/toggle-active', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, is_active: isActive })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✓ ${data.message}`);
+                    fetchAdminStats();
+                } else {
+                    alert(`❌ ${data.error || 'فشل تغيير حالة الحساب'}`);
+                }
+            } catch (err) {
+                alert("خطأ في الاتصال بالسيرفر");
+            }
+        }
+
+        async function toggleTaskStatus(taskId, isOpen) {
+            try {
+                const res = await fetch('/api/admin/tasks/toggle-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_id: taskId, is_open: isOpen })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    await fetchPlatformState();
+                    fetchAdminStats();
+                } else {
+                    alert(data.error || "فشل تغيير حالة المهمة");
+                }
+            } catch (err) {
+                alert("خطأ في الاتصال بالسيرفر");
+            }
+        }
+
+        async function deleteTaskOrLesson(targetId) {
+            if (!confirm(`هل أنت متأكد من رغبتك في حذف هذا الدرس/المهمة (ID: ${targetId}) نهائياً؟`)) return;
+            try {
+                const res = await fetch('/api/admin/tasks/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_id: targetId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✓ ${data.message}`);
+                    await fetchPlatformState();
+                    fetchAdminStats();
+                } else {
+                    alert(`❌ ${data.error || 'خطأ في الحذف'}`);
+                }
+            } catch (err) {
+                alert("خطأ في الاتصال بالسيرفر");
             }
         }
 
@@ -1929,6 +2453,314 @@
                 fetchPlatformState();
             }
         }, 20000);
+
+        // ================= EXAM MANAGEMENT & STUDENT EXAM LOGIC =================
+        let currentStudentExam = null;
+        let examTimerInterval = null;
+        let examSelectedFileB64 = "";
+        let examSelectedFilename = "";
+
+        async function fetchOpenExamsForStudents() {
+            const container = document.getElementById('student-open-exams-list');
+            if (!container) return;
+            try {
+                const res = await fetch('/api/exams');
+                const data = await res.json();
+                const openExams = data.exams || [];
+
+                if (openExams.length === 0) {
+                    container.innerHTML = `
+                        <div style="background: rgba(3, 7, 18, 0.6); padding: 16px; border-radius: 12px; border: 1px dashed rgba(239, 68, 68, 0.3); text-align: center; color: #9ca3af; font-size: 0.85rem;">
+                            🔒 لا توجد امتحانات مفتوحة حالياً. جميع الامتحانات مغلقة وسرية أو لم يأتِ موعدها بعد.
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = openExams.map(ex => {
+                        const durationText = ex.duration_minutes ? `⏱️ المدة: ${ex.duration_minutes} دقيقة` : '⏱️ بدون وقت محدد';
+                        return `
+                            <div class="exam-card open-exam">
+                                <div class="exam-header">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <h4 style="color: #fff; font-weight: 800; margin: 0;">${ex.title}</h4>
+                                        <span class="exam-badge-open">🟢 مفتوح للحل الآن</span>
+                                    </div>
+                                    <span class="exam-timer-pill">${durationText}</span>
+                                </div>
+                                <p style="color: #94a3b8; font-size: 0.82rem; margin: 4px 0;">${ex.description || 'امتحان تفاعلي رسمي'}</p>
+                                <div style="margin-top: 8px;">
+                                    <button onclick="openStudentExamModal('${ex.id}')" class="btn-action" style="padding: 8px 18px; font-size: 0.85rem; background: linear-gradient(135deg, #ef4444, #dc2626); border: none;">
+                                        🚀 دخول الامتحان والبدء في الحل
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (err) {
+                console.error("Error fetching open exams:", err);
+            }
+        }
+
+        async function submitAdminNewExam() {
+            const title = document.getElementById('adm-exam-title').value.trim();
+            const duration = document.getElementById('adm-exam-duration').value;
+            const desc = document.getElementById('adm-exam-desc').value.trim();
+            const instructions = document.getElementById('adm-exam-instructions').value.trim();
+            const qTitle = document.getElementById('adm-exam-q-title').value.trim();
+            const qInstruction = document.getElementById('adm-exam-q-instruction').value.trim();
+            const qExpected = document.getElementById('adm-exam-q-expected').value.trim();
+            const statusBox = document.getElementById('adm-exam-create-status');
+
+            if (!title) {
+                alert("يرجى كتابة عنوان الامتحان");
+                return;
+            }
+
+            const questions = [];
+            if (qTitle || qInstruction) {
+                questions.push({
+                    id: `q_${Date.now()}`,
+                    title: qTitle || "السؤال الأول",
+                    instruction: qInstruction || "اكتب الكود المطلوب",
+                    test_cases: qExpected ? [{ type: "exact_output", expected: qExpected }] : []
+                });
+            }
+
+            try {
+                const res = await fetch('/api/admin/exams/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: title,
+                        duration_minutes: parseInt(duration) || 0,
+                        description: desc,
+                        instructions: instructions,
+                        questions: questions,
+                        is_open: false // Default closed & secret
+                    })
+                });
+                const data = await res.json();
+                statusBox.style.display = 'block';
+                if (data.success) {
+                    statusBox.style.background = 'rgba(34, 197, 94, 0.15)';
+                    statusBox.style.color = '#4ade80';
+                    statusBox.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+                    statusBox.textContent = data.message;
+                    // Reset fields
+                    document.getElementById('adm-exam-title').value = '';
+                    document.getElementById('adm-exam-desc').value = '';
+                    document.getElementById('adm-exam-instructions').value = '';
+                    document.getElementById('adm-exam-q-title').value = '';
+                    document.getElementById('adm-exam-q-instruction').value = '';
+                    document.getElementById('adm-exam-q-expected').value = '';
+                    fetchAdminStats();
+                    fetchOpenExamsForStudents();
+                } else {
+                    statusBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    statusBox.style.color = '#f87171';
+                    statusBox.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+                    statusBox.textContent = data.error || 'حدث خطأ في إنشاء الامتحان';
+                }
+            } catch (err) {
+                alert("خطأ في الاتصال بالخادم");
+            }
+        }
+
+        async function toggleExamStatus(examId, isOpen) {
+            try {
+                const res = await fetch('/api/admin/exams/toggle-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ exam_id: examId, is_open: isOpen })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    fetchAdminStats();
+                    fetchOpenExamsForStudents();
+                } else {
+                    alert(data.error || "فشل تغيير حالة الامتحان");
+                }
+            } catch (err) {
+                alert("خطأ في الاتصال بالخادم");
+            }
+        }
+
+        async function deleteExam(examId) {
+            if (!confirm("هل أنت متأكد من رغبتك في حذف هذا الامتحان وجميع التسليمات المرتبطة به؟")) return;
+            try {
+                const res = await fetch('/api/admin/exams/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ exam_id: examId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    fetchAdminStats();
+                    fetchOpenExamsForStudents();
+                } else {
+                    alert(data.error || "فشل حذف الامتحان");
+                }
+            } catch (err) {
+                alert("خطأ في الاتصال بالخادم");
+            }
+        }
+
+        async function openStudentExamModal(examId) {
+            if (!platformState || !platformState.user) {
+                alert("يرجى تسجيل الدخول أولاً لدخول الامتحان");
+                openAuthModal();
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/exam/${examId}`);
+                if (!res.ok) {
+                    const errData = await res.json();
+                    alert(errData.error || "الامتحان غير متاح أو مغلق حالياً");
+                    return;
+                }
+                const data = await res.json();
+                currentStudentExam = data.exam;
+
+                document.getElementById('student-exam-modal-title').textContent = currentStudentExam.title;
+                document.getElementById('student-exam-instructions-display').textContent = currentStudentExam.instructions || currentStudentExam.description || "اقرأ السؤال بدقة واكتب الكود المطلوب أو أرفق ملف الحل النهائي.";
+                document.getElementById('student-exam-locked-banner').style.display = 'none';
+                document.getElementById('student-exam-status-msg').style.display = 'none';
+                document.getElementById('btn-submit-student-exam').disabled = false;
+
+                // Render Questions
+                const qContainer = document.getElementById('student-exam-questions-container');
+                let questions = [];
+                try {
+                    questions = JSON.parse(currentStudentExam.questions_json || "[]");
+                } catch(e) { questions = []; }
+
+                if (questions.length === 0) {
+                    qContainer.innerHTML = `
+                        <div class="task-prompt-box">
+                            <div style="font-weight: 700; color: #fff;">الامتحان العملي العام:</div>
+                            <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">أدخل كود الحل في المحرر أدناه أو ارفع ملف الحل المرفق (.py / .pdf / .zip).</p>
+                            <textarea id="exam-q-ans-0" class="code-textarea" rows="8" placeholder="# اكتب كود إجابتك هنا...\n"></textarea>
+                        </div>
+                    `;
+                } else {
+                    qContainer.innerHTML = questions.map((q, idx) => `
+                        <div class="task-prompt-box" style="margin-bottom: 10px;">
+                            <div style="font-weight: 800; color: #fbbf24; margin-bottom: 4px;">السؤال ${idx + 1}: ${q.title || ''}</div>
+                            <div style="color: #e2e8f0; white-space: pre-line; margin-bottom: 8px;">${q.instruction || ''}</div>
+                            <textarea id="exam-q-ans-${idx}" class="code-textarea" rows="6" placeholder="# اكتب كود الإجابة للسؤال ${idx + 1} هنا...\n"></textarea>
+                        </div>
+                    `).join('');
+                }
+
+                // Reset file attachment state
+                examSelectedFileB64 = "";
+                examSelectedFilename = "";
+                document.getElementById('exam-solution-file-name').textContent = "لم يتم اختيار ملف";
+
+                // Setup Timer if duration > 0
+                if (examTimerInterval) clearInterval(examTimerInterval);
+                const timerContainer = document.getElementById('student-exam-timer');
+                const timerDisplay = document.getElementById('student-timer-display');
+
+                if (currentStudentExam.duration_minutes > 0) {
+                    timerContainer.style.display = 'inline-flex';
+                    let totalSeconds = currentStudentExam.duration_minutes * 60;
+                    
+                    examTimerInterval = setInterval(() => {
+                        totalSeconds--;
+                        if (totalSeconds <= 0) {
+                            clearInterval(examTimerInterval);
+                            timerDisplay.textContent = "00:00 - انتهى الوقت!";
+                            alert("⌛ انتهى الوقت المحدد للامتحان! سيتم تسليم إجابتك الحالية الآن.");
+                            submitStudentExam();
+                        } else {
+                            const mins = Math.floor(totalSeconds / 60);
+                            const secs = totalSeconds % 60;
+                            timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                        }
+                    }, 1000);
+                } else {
+                    timerContainer.style.display = 'none';
+                }
+
+                document.getElementById('student-exam-modal').classList.remove('hidden');
+
+            } catch (err) {
+                alert("خطأ في الاتصال بالخادم عند فتح الامتحان");
+            }
+        }
+
+        function closeStudentExamModal() {
+            if (examTimerInterval) clearInterval(examTimerInterval);
+            document.getElementById('student-exam-modal').classList.add('hidden');
+        }
+
+        function handleExamSolutionFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            examSelectedFilename = file.name;
+            document.getElementById('exam-solution-file-name').textContent = `📁 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                examSelectedFileB64 = e.target.result.split(',')[1] || "";
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function submitStudentExam() {
+            if (!currentStudentExam) return;
+            const statusBox = document.getElementById('student-exam-status-msg');
+            const submitBtn = document.getElementById('btn-submit-student-exam');
+
+            statusBox.style.display = 'none';
+            submitBtn.disabled = true;
+
+            // Gather Answers
+            const answers = {};
+            const textareas = document.querySelectorAll('[id^="exam-q-ans-"]');
+            textareas.forEach((ta, idx) => {
+                answers[idx] = ta.value;
+            });
+
+            try {
+                const res = await fetch('/api/exam/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        exam_id: currentStudentExam.id,
+                        answers: answers,
+                        file_content_base64: examSelectedFileB64,
+                        filename: examSelectedFilename
+                    })
+                });
+                const data = await res.json();
+                statusBox.style.display = 'block';
+
+                if (data.success) {
+                    statusBox.style.background = 'rgba(34, 197, 94, 0.2)';
+                    statusBox.style.color = '#4ade80';
+                    statusBox.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+                    statusBox.textContent = `🎉 ${data.message}`;
+                    setTimeout(() => {
+                        closeStudentExamModal();
+                    }, 2500);
+                } else {
+                    statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                    statusBox.style.color = '#f87171';
+                    statusBox.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                    statusBox.textContent = data.error || 'فشل تسليم الامتحان';
+                    submitBtn.disabled = false;
+                }
+            } catch (err) {
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(239, 68, 68, 0.2)';
+                statusBox.style.color = '#f87171';
+                statusBox.textContent = "خطأ في الاتصال بالسيرفر";
+                submitBtn.disabled = false;
+            }
+        }
 
         fetchPlatformState();
     </script>

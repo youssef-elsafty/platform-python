@@ -144,23 +144,27 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 }, status=403)
             
             completed_tasks = set(state["completed_tasks"])
+            task_status_map = db.get_task_status_map()
             
             tasks = []
             for t in lesson.get("tasks", []):
                 t_copy = dict(t)
                 t_copy["completed"] = t["id"] in completed_tasks
+                t_copy["is_open"] = task_status_map.get(t["id"], True)
                 tasks.append(t_copy)
 
             cumulative_tasks = []
             for ct in lesson.get("cumulative_tasks", []):
                 ct_copy = dict(ct)
                 ct_copy["completed"] = ct["id"] in completed_tasks
+                ct_copy["is_open"] = task_status_map.get(ct["id"], True)
                 cumulative_tasks.append(ct_copy)
 
             response_data = dict(lesson)
             response_data["tasks"] = tasks
             response_data["cumulative_tasks"] = cumulative_tasks
             response_data["is_completed"] = lesson_status["completed"]
+            response_data["is_open"] = task_status_map.get(lesson_id, True)
             return self.send_json(response_data)
 
         # 4. Download / View Uploaded Submission File (Admin only)
@@ -184,6 +188,23 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 return
             except Exception as e:
                 return self.send_json({"error": f"فشل قراءة الملف: {str(e)}"}, status=500)
+
+        # 5. Exams List Endpoint
+        if path == "/api/exams":
+            is_admin = current_user and current_user.get("role") == "admin"
+            exams = db.get_all_exams() if is_admin else db.get_open_exams()
+            return self.send_json({"exams": exams})
+
+        # 6. Single Exam Detail Endpoint
+        if path.startswith("/api/exam/"):
+            exam_id = path.replace("/api/exam/", "").strip("/")
+            exam = db.get_exam_by_id(exam_id)
+            if not exam:
+                return self.send_json({"error": "الامتحان غير موجود"}, status=404)
+            is_admin = current_user and current_user.get("role") == "admin"
+            if not is_admin and not exam.get("is_open"):
+                return self.send_json({"error": "هذا الامتحان مغلق وسري حالياً من قِبل المشرف 🔒"}, status=403)
+            return self.send_json({"exam": exam})
 
         return super().do_GET()
 
@@ -287,7 +308,7 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             return self.send_json({"success": True}, status=200, set_cookie=cookie)
 
         # 6. Authorization Guard: Endpoints requiring active login
-        if path in ("/api/submit-task", "/api/reset", "/api/admin/delete-user", "/api/upload-submission", "/api/admin/create-task"):
+        if path in ("/api/submit-task", "/api/save-code-draft", "/api/reset", "/api/admin/delete-user", "/api/upload-submission", "/api/admin/create-task", "/api/admin/tasks/toggle-status", "/api/admin/tasks/delete", "/api/admin/users/update-role", "/api/admin/users/toggle-active"):
             if not current_user:
                 return self.send_json({"error": "غير مصرح (Unauthorized): يرجى تسجيل الدخول أولاً للمتابعة."}, status=401)
 
@@ -299,6 +320,50 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             res = db.delete_user(user_to_delete)
             status_code = 200 if res["success"] else 400
             return self.send_json(res, status=status_code)
+
+        # Admin: Update User Role (Promote / Demote)
+        if path == "/api/admin/users/update-role":
+            if current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            user_id = str(body_data.get("user_id", "")).strip()
+            role = str(body_data.get("role", "student")).strip()
+            res = db.update_user_role(user_id, role)
+            return self.send_json(res, status=200 if res["success"] else 400)
+
+        # Admin: Toggle User Status (Activate / Ban)
+        if path == "/api/admin/users/toggle-active":
+            if current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            user_id = str(body_data.get("user_id", "")).strip()
+            is_active = bool(body_data.get("is_active", True))
+            res = db.toggle_user_status(user_id, is_active)
+            return self.send_json(res, status=200 if res["success"] else 400)
+
+        # Admin: Toggle Task Status (Open 🟢 / Lock 🔴)
+        if path == "/api/admin/tasks/toggle-status":
+            if current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            task_id = str(body_data.get("task_id", "")).strip()
+            is_open = bool(body_data.get("is_open", False))
+            res = db.toggle_task_status(task_id, is_open)
+            return self.send_json(res, status=200 if res["success"] else 400)
+
+        # Admin: Delete Task or Lesson
+        if path == "/api/admin/tasks/delete":
+            if current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            target_id = str(body_data.get("target_id", "")).strip()
+            res = engine.delete_task_or_lesson(target_id)
+            return self.send_json(res, status=200 if res["success"] else 400)
+
+        # Save Code Draft (Student Auto-Save)
+        if path == "/api/save-code-draft":
+            task_id = str(body_data.get("task_id", "")).strip()
+            code = str(body_data.get("code", ""))
+            if not task_id:
+                return self.send_json({"success": False, "error": "رمز المهمة غير محدد"}, status=400)
+            db.save_user_task_code(current_user["id"], task_id, code)
+            return self.send_json({"success": True, "message": "تم حفظ المسودة بنجاح"})
 
         # Reset Progress
         if path == "/api/reset":
@@ -329,6 +394,14 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
 
             if len(code) > 10000:
                 return self.send_json({"passed": False, "feedback": "حجم الكود تجاوز الحد الأقصى المسموح به."}, status=400)
+
+            # Always save the student's code permanently whenever they submit
+            db.save_user_task_code(current_user["id"], task_id, code)
+
+            # Check if task is locked by admin
+            task_status_map = db.get_task_status_map()
+            if not task_status_map.get(task_id, True) and current_user.get("role") != "admin":
+                return self.send_json({"passed": False, "feedback": "عذراً! هذه المهمة مغلقة وسرية حالياً من قِبل المشرف ولا يمكن حلها 🔒"}, status=403)
 
             lesson = engine.get_lesson_by_id(lesson_id)
             if not lesson:
@@ -495,6 +568,119 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 })
             except Exception as e:
                 return self.send_json({"success": False, "error": f"فشل حفظ المهمة: {str(e)}"}, status=500)
+
+        # Admin: Create New Exam
+        if path == "/api/admin/exams/create":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            title = str(body_data.get("title", "")).strip()
+            description = str(body_data.get("description", "")).strip()
+            instructions = str(body_data.get("instructions", "")).strip()
+            try:
+                duration_minutes = int(body_data.get("duration_minutes", 0))
+            except (ValueError, TypeError):
+                duration_minutes = 0
+            questions_json = json.dumps(body_data.get("questions", []), ensure_ascii=False) if isinstance(body_data.get("questions"), list) else str(body_data.get("questions_json", "[]"))
+            attached_file = str(body_data.get("attached_file", "")).strip()
+            is_open = bool(body_data.get("is_open", False))
+
+            if not title:
+                return self.send_json({"success": False, "error": "يرجى كتابة عنوان الامتحان"}, status=400)
+
+            res = db.create_exam(title, description, instructions, duration_minutes, questions_json, attached_file, is_open)
+            return self.send_json(res, status=200 if res["success"] else 400)
+
+        # Admin: Toggle Exam Status (Open 🟢 / Lock 🔴)
+        if path == "/api/admin/exams/toggle-status":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            exam_id = str(body_data.get("exam_id", "")).strip()
+            is_open = bool(body_data.get("is_open", False))
+            res = db.toggle_exam_status(exam_id, is_open)
+            return self.send_json(res, status=200 if res["success"] else 400)
+
+        # Admin: Delete Exam
+        if path == "/api/admin/exams/delete":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            exam_id = str(body_data.get("exam_id", "")).strip()
+            res = db.delete_exam(exam_id)
+            return self.send_json(res, status=200 if res["success"] else 400)
+
+        # Admin: Get Exam Submissions
+        if path == "/api/admin/exams/submissions":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            exam_id = str(body_data.get("exam_id", "")).strip() or None
+            subs = db.get_exam_submissions(exam_id)
+            return self.send_json({"submissions": subs})
+
+        # Student / User: Submit Exam Solution
+        if path == "/api/exam/submit":
+            if not current_user:
+                return self.send_json({"error": "يرجى تسجيل الدخول لتسليم الامتحان"}, status=401)
+            exam_id = str(body_data.get("exam_id", "")).strip()
+            answers = body_data.get("answers", {})
+            file_b64 = str(body_data.get("file_content_base64", "")).strip()
+            original_filename = str(body_data.get("filename", "")).strip()
+
+            exam = db.get_exam_by_id(exam_id)
+            if not exam:
+                return self.send_json({"success": False, "error": "الامتحان غير موجود"}, status=404)
+            is_admin = current_user.get("role") == "admin"
+            if not is_admin and not exam.get("is_open"):
+                return self.send_json({"success": False, "error": "عذراً! تم قفل هذا الامتحان من قِبل المشرف ولا يمكن استقبال أي تسليمات 🔒"}, status=403)
+
+            saved_filename = ""
+            if file_b64 and original_filename:
+                safe_basename = os.path.basename(original_filename).replace(" ", "_")
+                ext = os.path.splitext(safe_basename)[1].lower()
+                allowed_exts = {".py", ".txt", ".pdf", ".zip", ".ipynb"}
+                if ext in allowed_exts:
+                    try:
+                        file_bytes = base64.b64decode(file_b64)
+                        clean_name = "".join(c for c in safe_basename if c.isalnum() or c in "._-")
+                        saved_filename = f"exam_{current_user['username']}_{int(uuid.uuid1().time)}_{clean_name}"
+                        upload_dir = os.path.join(os.path.dirname(__file__), "uploads", "submissions")
+                        os.makedirs(upload_dir, exist_ok=True)
+                        with open(os.path.join(upload_dir, saved_filename), "wb") as f:
+                            f.write(file_bytes)
+                    except Exception as e:
+                        print(f"Error saving exam file submission: {e}")
+
+            answers_json = json.dumps(answers, ensure_ascii=False) if isinstance(answers, (dict, list)) else str(answers)
+            
+            score = 0
+            max_score = 0
+            try:
+                questions = json.loads(exam.get("questions_json", "[]")) if exam.get("questions_json") else []
+                max_score = len(questions) * 10
+                if isinstance(answers, dict) and questions:
+                    for q_idx, q in enumerate(questions):
+                        ans_code = answers.get(str(q_idx), "") or answers.get(q_idx, "")
+                        if ans_code and q.get("test_cases"):
+                            eval_res = engine.evaluate_task(q, ans_code)
+                            if eval_res["passed"]:
+                                score += 10
+            except Exception as ex:
+                print(f"Error evaluating exam answers: {ex}")
+
+            save_res = db.save_exam_submission(
+                user_id=current_user["id"],
+                exam_id=exam_id,
+                score=score,
+                max_score=max_score,
+                answers_json=answers_json,
+                uploaded_file=saved_filename
+            )
+
+            return self.send_json({
+                "success": True,
+                "message": "تم تسليم إجابتك في الامتحان بنجاح وحفظها في سجل المشرف 🚀",
+                "score": score,
+                "max_score": max_score,
+                "submission_id": save_res.get("submission_id")
+            })
 
         return self.send_json({"error": "Endpoint not found"}, status=404)
 

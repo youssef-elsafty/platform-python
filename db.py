@@ -107,7 +107,7 @@ def init_db():
     """Initializes schema and runs migrations"""
     with get_db() as db:
         if db.is_pg:
-            for migration_file in ["001_initial_schema.sql", "002_admin_and_logs.sql", "003_contact_inquiries.sql", "004_task_submissions.sql", "005_task_duration.sql"]:
+            for migration_file in ["001_initial_schema.sql", "002_admin_and_logs.sql", "003_contact_inquiries.sql", "004_task_submissions.sql", "005_task_duration.sql", "006_exams.sql", "007_user_saved_code_and_task_controls.sql"]:
                 m_path = os.path.join(os.path.dirname(__file__), "migrations", migration_file)
                 if os.path.exists(m_path):
                     with open(m_path, "r", encoding="utf-8") as f:
@@ -120,6 +120,7 @@ def init_db():
                     email TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
                     role TEXT DEFAULT 'student',
+                    is_active BOOLEAN DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -199,6 +200,50 @@ def init_db():
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
             """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS exams (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    instructions TEXT,
+                    duration_minutes INTEGER DEFAULT 0,
+                    is_open BOOLEAN NOT NULL DEFAULT 0,
+                    questions_json TEXT,
+                    attached_file TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS exam_submissions (
+                    id TEXT PRIMARY KEY,
+                    exam_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    score INTEGER DEFAULT 0,
+                    max_score INTEGER DEFAULT 0,
+                    answers_json TEXT,
+                    uploaded_file TEXT,
+                    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS user_saved_code (
+                    user_id TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    code TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, task_id),
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS task_status_controls (
+                    task_id TEXT PRIMARY KEY,
+                    is_open BOOLEAN NOT NULL DEFAULT 1,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
 
             # Safe SQLite migration for existing databases
             try:
@@ -208,6 +253,9 @@ def init_db():
                 cols_ct = [c[1] for c in db.conn.execute("PRAGMA table_info(completed_tasks)").fetchall()]
                 if "duration_seconds" not in cols_ct:
                     db.conn.execute("ALTER TABLE completed_tasks ADD COLUMN duration_seconds INTEGER DEFAULT 0")
+                cols_u = [c[1] for c in db.conn.execute("PRAGMA table_info(users)").fetchall()]
+                if "is_active" not in cols_u:
+                    db.conn.execute("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1")
             except Exception as e:
                 print(f"Notice during SQLite duration migration: {e}")
 
@@ -254,12 +302,15 @@ def authenticate_user(username_or_email: str, password: str, ip_address: str = "
     identifier = username_or_email.strip().lower()
     with get_db() as db:
         user = db.fetchone(
-            "SELECT id, username, email, password_hash, role FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?",
+            "SELECT id, username, email, password_hash, role, is_active FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?",
             (identifier, identifier)
         )
         
         if not user or not verify_password(user["password_hash"], password):
             return {"success": False, "error": "اسم المستخدم أو كلمة المرور غير صحيحة"}
+
+        if user.get("is_active") is False or user.get("is_active") == 0:
+            return {"success": False, "error": "تم حظر هذا الحساب من قِبل المشرف ⛔. يرجى التواصل مع الدعم الفني."}
 
         token = secrets.token_urlsafe(32)
         db.execute("INSERT INTO sessions (session_token, user_id) VALUES (?, ?)", (token, user["id"]))
@@ -278,7 +329,8 @@ def authenticate_user(username_or_email: str, password: str, ip_address: str = "
                 "id": user["id"],
                 "username": user["username"],
                 "email": user["email"],
-                "role": user.get("role", "student")
+                "role": user.get("role", "student"),
+                "is_active": bool(user.get("is_active", True))
             }
         }
 
@@ -286,12 +338,15 @@ def get_user_by_session(token: str):
     if not token:
         return None
     with get_db() as db:
-        return db.fetchone("""
-            SELECT u.id, u.username, u.email, u.role 
+        user = db.fetchone("""
+            SELECT u.id, u.username, u.email, u.role, u.is_active 
             FROM sessions s
             JOIN users u ON s.user_id = u.id
             WHERE s.session_token = ?
         """, (token,))
+        if user and (user.get("is_active") is False or user.get("is_active") == 0):
+            return None
+        return user
 
 def delete_session(token: str):
     if not token:
@@ -394,6 +449,7 @@ def get_admin_dashboard_stats():
                 u.username, 
                 u.email, 
                 u.role,
+                COALESCE(u.is_active, 1) as is_active,
                 u.created_at,
                 (SELECT COUNT(*) FROM completed_tasks ct WHERE ct.user_id = u.id) as solved_tasks,
                 (SELECT COUNT(*) FROM completed_lessons cl WHERE cl.user_id = u.id) as finished_lessons,
@@ -449,18 +505,45 @@ def get_admin_dashboard_stats():
             LIMIT 50
         """)
 
+        # Exams & Exam Submissions
+        all_exams = db.fetchall("SELECT id, title, description, instructions, duration_minutes, is_open, questions_json, attached_file, created_at FROM exams ORDER BY created_at DESC")
+        exam_submissions = db.fetchall("""
+            SELECT 
+                es.id,
+                es.exam_id,
+                e.title as exam_title,
+                es.user_id,
+                u.username,
+                u.email,
+                es.score,
+                es.max_score,
+                es.answers_json,
+                es.uploaded_file,
+                es.submitted_at
+            FROM exam_submissions es
+            JOIN exams e ON es.exam_id = e.id
+            JOIN users u ON es.user_id = u.id
+            ORDER BY es.submitted_at DESC
+            LIMIT 50
+        """)
+
         return {
             "total_users": total_users,
             "total_tasks_solved": total_tasks_solved,
             "total_lessons_completed": total_lessons_completed,
             "total_inquiries": total_inquiries,
             "total_uploaded_submissions": len(uploaded_submissions),
+            "total_exams": len(all_exams),
+            "open_exams_count": sum(1 for ex in all_exams if ex.get("is_open")),
+            "total_exam_submissions": len(exam_submissions),
             "avg_solve_seconds": avg_solve_seconds,
             "recent_logins": recent_logins,
             "students": students,
             "inquiries": inquiries,
             "task_submissions": task_submissions,
-            "uploaded_submissions": uploaded_submissions
+            "uploaded_submissions": uploaded_submissions,
+            "all_exams": all_exams,
+            "exam_submissions": exam_submissions
         }
 
 def save_uploaded_submission(user_id: str, original_filename: str, saved_filename: str, file_size: int, task_id: str = None, lesson_id: str = None, notes: str = ""):
@@ -507,3 +590,165 @@ def delete_user(user_id: str):
         db.execute("DELETE FROM contact_inquiries WHERE user_id = ?", (user_id,))
         db.execute("DELETE FROM users WHERE id = ?", (user_id,))
         return {"success": True, "message": f"تم حذف المستخدم {user['username']} بنجاح"}
+
+# ================= EXAMS & CONTROL FUNCTIONS =================
+def create_exam(title: str, description: str = "", instructions: str = "", duration_minutes: int = 0, questions_json: str = "[]", attached_file: str = "", is_open: bool = False):
+    exam_id = f"exam_{str(uuid.uuid4())[:8]}"
+    try:
+        with get_db() as db:
+            db.execute("""
+                INSERT INTO exams (id, title, description, instructions, duration_minutes, is_open, questions_json, attached_file)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (exam_id, title.strip(), description.strip(), instructions.strip(), duration_minutes, 1 if is_open else 0, questions_json, attached_file))
+        return {"success": True, "exam_id": exam_id, "message": "تم إنشاء الامتحان بنجاح وحفظه بحالة (مغلق وسري 🔒) لحين فتحك له للطلاب."}
+    except Exception as e:
+        return {"success": False, "error": f"فشل إنشاء الامتحان: {str(e)}"}
+
+def get_all_exams():
+    with get_db() as db:
+        exams = db.fetchall("SELECT id, title, description, instructions, duration_minutes, is_open, questions_json, attached_file, created_at FROM exams ORDER BY created_at DESC")
+        return exams
+
+def get_open_exams():
+    with get_db() as db:
+        # 1 or true for PostgreSQL / SQLite compatibility
+        exams = db.fetchall("SELECT id, title, description, instructions, duration_minutes, is_open, questions_json, attached_file, created_at FROM exams WHERE is_open = 1 OR is_open = true ORDER BY created_at DESC")
+        return exams
+
+def get_exam_by_id(exam_id: str):
+    if not exam_id:
+        return None
+    with get_db() as db:
+        return db.fetchone("SELECT id, title, description, instructions, duration_minutes, is_open, questions_json, attached_file, created_at FROM exams WHERE id = ?", (exam_id,))
+
+def toggle_exam_status(exam_id: str, is_open: bool):
+    with get_db() as db:
+        exam = db.fetchone("SELECT id, title FROM exams WHERE id = ?", (exam_id,))
+        if not exam:
+            return {"success": False, "error": "الامتحان غير موجود"}
+        db.execute("UPDATE exams SET is_open = ? WHERE id = ?", (1 if is_open else 0, exam_id))
+        status_text = "مفتوح حالياً للطلاب 🟢" if is_open else "مغلق وسري 🔴"
+        return {"success": True, "is_open": is_open, "message": f"تم تغيير حالة الامتحان '{exam['title']}' إلى: {status_text}"}
+
+def delete_exam(exam_id: str):
+    with get_db() as db:
+        exam = db.fetchone("SELECT id, title FROM exams WHERE id = ?", (exam_id,))
+        if not exam:
+            return {"success": False, "error": "الامتحان غير موجود"}
+        db.execute("DELETE FROM exam_submissions WHERE exam_id = ?", (exam_id,))
+        db.execute("DELETE FROM exams WHERE id = ?", (exam_id,))
+        return {"success": True, "message": f"تم حذف الامتحان '{exam['title']}' وجميع تسليماته بنجاح"}
+
+def save_exam_submission(user_id: str, exam_id: str, score: int = 0, max_score: int = 0, answers_json: str = "{}", uploaded_file: str = ""):
+    sub_id = str(uuid.uuid4())
+    try:
+        with get_db() as db:
+            db.execute("""
+                INSERT INTO exam_submissions (id, exam_id, user_id, score, max_score, answers_json, uploaded_file)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (sub_id, exam_id, user_id, score, max_score, answers_json, uploaded_file))
+        return {"success": True, "submission_id": sub_id}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def get_exam_submissions(exam_id: str = None):
+    with get_db() as db:
+        query = """
+            SELECT 
+                es.id,
+                es.exam_id,
+                e.title as exam_title,
+                es.user_id,
+                u.username,
+                u.email,
+                es.score,
+                es.max_score,
+                es.answers_json,
+                es.uploaded_file,
+                es.submitted_at
+            FROM exam_submissions es
+            JOIN exams e ON es.exam_id = e.id
+            JOIN users u ON es.user_id = u.id
+        """
+        params = ()
+        if exam_id:
+            query += " WHERE es.exam_id = ?"
+            params = (exam_id,)
+        query += " ORDER BY es.submitted_at DESC"
+        return db.fetchall(query, params)
+
+# ================= USER CODE PERSISTENCE & TASK CONTROLS =================
+def save_user_task_code(user_id: str, task_id: str, code: str):
+    if not user_id or not task_id:
+        return False
+    try:
+        with get_db() as db:
+            db.execute("""
+                INSERT INTO user_saved_code (user_id, task_id, code)
+                VALUES (?, ?, ?)
+                ON CONFLICT (user_id, task_id) DO UPDATE SET code = excluded.code, updated_at = CURRENT_TIMESTAMP
+            """, (user_id, task_id, code))
+        return True
+    except Exception as e:
+        print(f"Error saving user task code: {e}")
+        return False
+
+def get_user_task_codes(user_id: str) -> dict:
+    if not user_id:
+        return {}
+    with get_db() as db:
+        rows = db.fetchall("SELECT task_id, code FROM user_saved_code WHERE user_id = ?", (user_id,))
+        return {r["task_id"]: r["code"] for r in rows}
+
+def toggle_task_status(task_id: str, is_open: bool):
+    if not task_id:
+        return {"success": False, "error": "رمز المهمة مطلوب"}
+    try:
+        with get_db() as db:
+            db.execute("""
+                INSERT INTO task_status_controls (task_id, is_open)
+                VALUES (?, ?)
+                ON CONFLICT (task_id) DO UPDATE SET is_open = excluded.is_open, updated_at = CURRENT_TIMESTAMP
+            """, (task_id, 1 if is_open else 0))
+        status_str = "مفتوحة للطلاب 🟢" if is_open else "مغلقة وسرية 🔴"
+        return {"success": True, "task_id": task_id, "is_open": is_open, "message": f"تم تغيير حالة المهمة إلى: {status_str}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def get_task_status_map() -> dict:
+    with get_db() as db:
+        rows = db.fetchall("SELECT task_id, is_open FROM task_status_controls")
+        res = {}
+        for r in rows:
+            val = r["is_open"]
+            res[r["task_id"]] = bool(val == 1 or val is True or val == "1")
+        return res
+
+def update_user_role(user_id: str, role: str):
+    if not user_id or role not in ("student", "admin"):
+        return {"success": False, "error": "بيانات غير صالحة"}
+    with get_db() as db:
+        user = db.fetchone("SELECT username FROM users WHERE id = ?", (user_id,))
+        if not user:
+            return {"success": False, "error": "المستخدم غير موجود"}
+        db.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
+        role_title = "مشرف 👑" if role == "admin" else "طالب 🎓"
+        return {"success": True, "message": f"تم تغيير رتبة {user['username']} إلى {role_title}"}
+
+def toggle_user_status(user_id: str, is_active: bool):
+    if not user_id:
+        return {"success": False, "error": "معرف المستخدم مطلوب"}
+    with get_db() as db:
+        user = db.fetchone("SELECT username, role FROM users WHERE id = ?", (user_id,))
+        if not user:
+            return {"success": False, "error": "المستخدم غير موجود"}
+        if user["role"] == "admin" and not is_active:
+            return {"success": False, "error": "لا يمكن حظر المشرف الرئيسي"}
+        db.execute("UPDATE users SET is_active = ? WHERE id = ?", (1 if is_active else 0, user_id))
+        if not is_active:
+            # Delete active sessions if banned
+            db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        state_str = "مفعل 🟢" if is_active else "محظور 🔴"
+        return {"success": True, "message": f"تم تغيير حالة حساب {user['username']} إلى: {state_str}"}
+
+
