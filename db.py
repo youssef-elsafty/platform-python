@@ -757,6 +757,30 @@ def reset_task_status(task_id: str):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+def bulk_toggle_tasks(action: str, task_ids: list = None):
+    """
+    Bulk controls all lessons & tasks:
+    action in ('open_all', 'lock_all', 'sequential_all')
+    """
+    try:
+        with get_db() as db:
+            if action in ("sequential_all", "sequential"):
+                db.execute("DELETE FROM task_status_controls")
+                return {"success": True, "message": "تم إرجاع جميع الدروس والمهام لوضع التسلسل التلقائي 🔄"}
+            
+            is_open_val = 1 if action in ("open_all", True, 1, "open") else 0
+            if task_ids:
+                for tid in task_ids:
+                    db.execute("""
+                        INSERT INTO task_status_controls (task_id, is_open)
+                        VALUES (?, ?)
+                        ON CONFLICT (task_id) DO UPDATE SET is_open = excluded.is_open, updated_at = CURRENT_TIMESTAMP
+                    """, (tid, is_open_val))
+            msg = "تم فتح جميع الدروس والمهام لجميع الطلاب فوراً 🟢" if is_open_val else "تم قفل جميع الدروس والمهام مؤقتاً 🔒"
+            return {"success": True, "message": msg}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 def get_task_status_map() -> dict:
     with get_db() as db:
         rows = db.fetchall("SELECT task_id, is_open FROM task_status_controls")

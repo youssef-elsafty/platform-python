@@ -519,6 +519,294 @@
         .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
         .modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
         .code-box { background: #090d16; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 14px; font-family: 'Fira Code', monospace; font-size: 0.85rem; color: #38bdf8; white-space: pre-wrap; direction: ltr; text-align: left; margin-top: 10px; }
+
+        /* Modern Ergonomic Lessons & Tasks UI */
+        .ctrl-quick-bar {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .ctrl-search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1;
+            max-width: 480px;
+        }
+        .ctrl-search-box input {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .ctrl-search-box input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+        }
+        .ctrl-filter-chips {
+            display: flex;
+            gap: 6px;
+        }
+        .filter-chip {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .filter-chip:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .filter-chip.active {
+            background: rgba(14, 165, 233, 0.2);
+            color: #38bdf8;
+            border-color: rgba(14, 165, 233, 0.45);
+        }
+        .bulk-actions-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn-bulk {
+            padding: 6px 13px;
+            border-radius: 8px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+        .btn-bulk-open {
+            background: rgba(16, 185, 129, 0.16);
+            color: #34d399;
+            border-color: rgba(16, 185, 129, 0.35);
+        }
+        .btn-bulk-open:hover {
+            background: #10b981;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+        .btn-bulk-lock {
+            background: rgba(239, 68, 68, 0.16);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+        .btn-bulk-lock:hover {
+            background: #ef4444;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+        .btn-bulk-seq {
+            background: rgba(56, 189, 248, 0.14);
+            color: #38bdf8;
+            border-color: rgba(56, 189, 248, 0.35);
+        }
+        .btn-bulk-seq:hover {
+            background: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+        }
+        .btn-bulk-toggle {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        .btn-bulk-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        /* 3-Way Pill Switch Control */
+        .seg-control {
+            display: inline-flex;
+            background: rgba(10, 15, 29, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 9px;
+            padding: 3px;
+            gap: 2px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .seg-btn {
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 4px 11px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .seg-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .seg-btn.active-open {
+            background: rgba(16, 185, 129, 0.25);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+            font-weight: 800;
+        }
+        .seg-btn.active-locked {
+            background: rgba(239, 68, 68, 0.25);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+            font-weight: 800;
+        }
+        .seg-btn.active-seq {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.45);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+            font-weight: 800;
+        }
+
+        /* Collapsible Lesson Card */
+        .lesson-accordion-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .lesson-accordion-card:hover {
+            border-color: rgba(255, 255, 255, 0.14);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+        .lesson-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.015);
+            gap: 12px;
+            flex-wrap: wrap;
+            transition: background 0.15s ease;
+        }
+        .lesson-card-header:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .lesson-chevron-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+        .lesson-chevron-icon.expanded {
+            transform: rotate(180deg);
+            background: rgba(14, 165, 233, 0.15);
+            color: #38bdf8;
+        }
+        .lesson-tasks-body {
+            padding: 12px 16px 16px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(10, 15, 29, 0.5);
+        }
+        .task-row-card {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 9px 12px;
+            transition: all 0.15s ease;
+        }
+        .task-row-card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(15, 23, 42, 0.95);
+        }
+        .task-row-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .task-info-side {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .task-actions-side {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn-override-toggle {
+            background: rgba(245, 158, 11, 0.12);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            padding: 4px 10px;
+            border-radius: 7px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s ease;
+        }
+        .btn-override-toggle:hover {
+            background: rgba(245, 158, 11, 0.22);
+            border-color: #fbbf24;
+            color: #fef08a;
+        }
+        .btn-override-toggle.has-overrides {
+            background: rgba(245, 158, 11, 0.25);
+            border-color: rgba(245, 158, 11, 0.6);
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+        }
+        .student-override-drawer {
+            margin-top: 8px;
+            padding: 10px 12px;
+            background: rgba(245, 158, 11, 0.03);
+            border: 1px dashed rgba(245, 158, 11, 0.25);
+            border-radius: 8px;
+            display: none;
+            animation: fadeIn 0.15s ease-in-out;
+        }
+        .student-override-drawer.open {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -933,17 +1221,44 @@
             <!-- TAB 3: COURSES & LESSONS CONTROL + SMART TASK CREATOR -->
             <section id="pane-courses" class="admin-tab-pane">
                 <div class="data-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
                         <div>
-                            <h2 style="font-size: 1.25rem; font-weight: 700; color: white;">📖 إدارة المقررات، الدروس، والتحكم في فتح وقفل كل تاسك</h2>
-                            <p style="font-size: 0.78rem; color: var(--text-muted);">تحكم كامل من خلال زرار على كل تاسك لفتحها أو قفلها لكل الطلاب (تخطي الدروس السابقة في السيشن) أو لطالب محدد بالاسم</p>
+                            <h2 style="font-size: 1.25rem; font-weight: 700; color: white;">📖 إدارة المقررات والتحكم السريع في الدروس والمهام</h2>
+                            <p style="font-size: 0.78rem; color: var(--text-muted);">تحكم مرن وسهل للغاية: فتح أو قفل أي درس/تاسك بنقرة زر، أو تطبيق استثناء لطالب محدد، مع أزرار تحكم شاملة للراحة القصوى</p>
                         </div>
                         <button class="btn-action-sm btn-warn" onclick="document.getElementById('creator-form-box').scrollIntoView({behavior:'smooth'})">
                             ➕ نشر مهمة أو سؤال جديد
                         </button>
                     </div>
 
-                    <div id="lessons-control-container" style="display: flex; flex-direction: column; gap: 14px;">
+                    <!-- ERGONOMIC QUICK TOOLBAR -->
+                    <div class="ctrl-quick-bar">
+                        <div class="ctrl-search-box">
+                            <input type="text" id="lesson-task-search-input" placeholder="🔍 بحث سريع في أسماء الدروس والتاسكات والمعرفات..." oninput="onLessonSearchInput(this.value)">
+                            <div class="ctrl-filter-chips">
+                                <button class="filter-chip active" id="chip-filter-all" onclick="setTrackFilter('all')">الكل</button>
+                                <button class="filter-chip" id="chip-filter-general" onclick="setTrackFilter('general')">🐍 عام</button>
+                                <button class="filter-chip" id="chip-filter-uni" onclick="setTrackFilter('university')">🎓 جامعة</button>
+                            </div>
+                        </div>
+
+                        <div class="bulk-actions-group">
+                            <button class="btn-bulk btn-bulk-open" onclick="bulkSetAllTasks('open_all')" title="فتح جميع المقررات والتاسكات فوراً لكل الطلاب في السيشن">
+                                ⚡ فتح الكل
+                            </button>
+                            <button class="btn-bulk btn-bulk-lock" onclick="bulkSetAllTasks('lock_all')" title="قفل جميع الدروس والتاسكات مؤقتاً">
+                                🔒 قفل الكل
+                            </button>
+                            <button class="btn-bulk btn-bulk-seq" onclick="bulkSetAllTasks('sequential_all')" title="إرجاع وضع التسلسل الذكي التلقائي لكل الدروس">
+                                🔄 تسلسل تلقائي
+                            </button>
+                            <button class="btn-bulk btn-bulk-toggle" onclick="toggleAllAccordions()" title="طي أو فتح جميع الدروس دفعة واحدة">
+                                📂 طي / فتح الكل
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="lessons-control-container" style="display: flex; flex-direction: column; gap: 10px;">
                         <div style="text-align: center; padding: 20px; color: var(--text-muted);">جاري تحميل الدروس والتاسكات...</div>
                     </div>
                 </div>
@@ -1928,141 +2243,273 @@
             } catch (e) { alert('خطأ في الاتصال بالخادم'); }
         }
 
+        // UI State for ergonomic courses & tasks view
+        window.expandedLessons = window.expandedLessons || new Set();
+        window.openStudentDrawers = window.openStudentDrawers || new Set();
+        window.activeTrackFilter = window.activeTrackFilter || 'all';
+        window.lessonSearchQuery = window.lessonSearchQuery || '';
+
+        function setTrackFilter(track) {
+            window.activeTrackFilter = track;
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            const chipId = `chip-filter-${track === 'all' ? 'all' : (track === 'university' ? 'uni' : 'general')}`;
+            const activeChip = document.getElementById(chipId);
+            if (activeChip) activeChip.classList.add('active');
+            if (currentAdminData) renderLessonsAndTasksControl(currentAdminData);
+        }
+
+        function onLessonSearchInput(val) {
+            window.lessonSearchQuery = (val || '').trim().toLowerCase();
+            if (currentAdminData) renderLessonsAndTasksControl(currentAdminData);
+        }
+
+        function toggleLessonAccordion(lessonId) {
+            if (window.expandedLessons.has(lessonId)) {
+                window.expandedLessons.delete(lessonId);
+            } else {
+                window.expandedLessons.add(lessonId);
+            }
+            if (currentAdminData) renderLessonsAndTasksControl(currentAdminData);
+        }
+
+        function toggleAllAccordions() {
+            if (!currentAdminData || !currentAdminData.all_lessons_meta) return;
+            const allIds = currentAdminData.all_lessons_meta.map(l => l.id);
+            if (window.expandedLessons.size >= allIds.length) {
+                window.expandedLessons.clear();
+            } else {
+                allIds.forEach(id => window.expandedLessons.add(id));
+            }
+            renderLessonsAndTasksControl(currentAdminData);
+        }
+
+        function toggleStudentDrawer(taskId) {
+            if (window.openStudentDrawers.has(taskId)) {
+                window.openStudentDrawers.delete(taskId);
+            } else {
+                window.openStudentDrawers.add(taskId);
+            }
+            const el = document.getElementById(`drawer-${taskId}`);
+            if (el) {
+                el.classList.toggle('open');
+            }
+        }
+
+        async function bulkSetAllTasks(action) {
+            const actionLabels = {
+                'open_all': 'فتح جميع الدروس والتاسكات لجميع الطلاب فوراً',
+                'lock_all': 'قفل جميع الدروس والتاسكات مؤقتاً',
+                'sequential_all': 'إعادة جميع الدروس والتاسكات إلى وضع التسلسل التلقائي'
+            };
+            if (!confirm(`هل أنت متأكد من ${actionLabels[action] || action}؟`)) return;
+
+            try {
+                const res = await fetch(`${apiBase}/api/admin/tasks/bulk-toggle`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ action })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    alert("✓ " + (d.message || "تم تطبيق التغيير الشامل بنجاح!"));
+                    fetchAdminStats();
+                } else {
+                    alert(d.error || "فشل العملية الشاملة");
+                }
+            } catch (e) {
+                alert("خطأ في الاتصال بالسيرفر");
+            }
+        }
+
         function renderLessonsAndTasksControl(data) {
             const container = document.getElementById('lessons-control-container');
             if (!container) return;
 
-            const lessons = data.all_lessons_meta || [];
+            let lessons = data.all_lessons_meta || [];
             const statusMap = data.task_status_map || {};
             const overrides = data.task_overrides || [];
             const students = data.students || [];
 
+            // By default on initial load, expand the first lesson for immediate context
+            if (window.expandedLessons.size === 0 && lessons.length > 0) {
+                window.expandedLessons.add(lessons[0].id);
+            }
+
+            // Apply Track Filter
+            if (window.activeTrackFilter && window.activeTrackFilter !== 'all') {
+                lessons = lessons.filter(l => (l.track || 'general') === window.activeTrackFilter);
+            }
+
+            // Apply Search Filter
+            if (window.lessonSearchQuery) {
+                const q = window.lessonSearchQuery;
+                lessons = lessons.filter(l => {
+                    const matchTitle = (l.title || '').toLowerCase().includes(q);
+                    const matchCat = (l.category || '').toLowerCase().includes(q);
+                    const matchId = (l.id || '').toLowerCase().includes(q);
+                    const allTasks = (l.tasks || []).concat(l.cumulative_tasks || []);
+                    const matchTasks = allTasks.some(t => 
+                        (t.title || '').toLowerCase().includes(q) || 
+                        (t.id || '').toLowerCase().includes(q)
+                    );
+                    return matchTitle || matchCat || matchId || matchTasks;
+                });
+            }
+
             if (lessons.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">لا توجد دروس أو تاسكات مضافة حالياً</div>';
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted); background:rgba(255,255,255,0.02); border-radius:12px; border:1px dashed rgba(255,255,255,0.08);">لا توجد دروس أو تاسكات مطابقة لخيارات البحث أو الفلترة 🔍</div>';
                 return;
             }
 
-            const studentOptionsHtml = '<option value="">👤 اختر طالباً محدداً...</option>' +
-                '<option value="all">🌐 جميع الطلاب (All Students)</option>' +
-                students.map(s => `<option value="${s.id}">🎓 ${escapeHtml(s.username)} (${escapeHtml(s.email || '')})</option>`).join('');
+            const studentOptionsHtml = '<option value="">👤 اختر طالباً...</option>' +
+                students.map(s => `<option value="${s.id}">🎓 ${escapeHtml(s.username)}</option>`).join('');
 
             container.innerHTML = lessons.map(lesson => {
                 const lid = lesson.id;
-                const lState = statusMap[lid]; // true = forced open, false = forced locked, undefined = sequential
-                let lessonStatusBadge = '';
-                if (lState === true) {
-                    lessonStatusBadge = '<span style="color:#34d399; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); padding:3px 10px; border-radius:8px; font-size:0.75rem; font-weight:700;">🟢 مفتوح للكل فوراً (تخطي الدروس السابقة)</span>';
-                } else if (lState === false) {
-                    lessonStatusBadge = '<span style="color:#f87171; background:rgba(239,68,68,0.18); border:1px solid rgba(239,68,68,0.4); padding:3px 10px; border-radius:8px; font-size:0.75rem; font-weight:700;">🔒 مقفل على الجميع</span>';
-                } else {
-                    lessonStatusBadge = '<span style="color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.35); padding:3px 10px; border-radius:8px; font-size:0.75rem; font-weight:700;">🔄 متسلسل تلقائياً</span>';
-                }
+                const lState = statusMap[lid]; // true = open, false = locked, undefined = sequential
+                const isExpanded = window.expandedLessons.has(lid);
 
                 const allTasks = (lesson.tasks || []).map(t => ({...t, _isCum: false}))
                     .concat((lesson.cumulative_tasks || []).map(ct => ({...ct, _isCum: true})));
+                const taskCount = allTasks.length;
+
+                let lBadge = '';
+                if (lState === true) {
+                    lBadge = '<span style="color:#34d399; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.35); padding:2px 8px; border-radius:6px; font-size:0.72rem; font-weight:700;">🟢 مفتوح للكل</span>';
+                } else if (lState === false) {
+                    lBadge = '<span style="color:#f87171; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.35); padding:2px 8px; border-radius:6px; font-size:0.72rem; font-weight:700;">🔒 مقفل</span>';
+                } else {
+                    lBadge = '<span style="color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); padding:2px 8px; border-radius:6px; font-size:0.72rem; font-weight:700;">🔄 متسلسل</span>';
+                }
 
                 const tasksHtml = allTasks.length === 0
-                    ? '<div style="font-size:0.78rem; color:var(--text-muted); padding:8px;">لا توجد تاسكات داخل هذا الدرس</div>'
+                    ? '<div style="font-size:0.78rem; color:var(--text-muted); padding:10px; text-align:center;">لا توجد تاسكات داخل هذا الدرس</div>'
                     : allTasks.map(t => {
                         const tid = t.id;
-                        // Determine task global state
                         const tExplicit = statusMap[tid];
                         const effectiveGlobal = (tExplicit !== undefined) ? tExplicit : lState;
-                        let taskBadge = '';
+
+                        let tBadge = '';
                         if (effectiveGlobal === true) {
-                            taskBadge = '<span style="color:#34d399; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); padding:2px 9px; border-radius:6px; font-size:0.73rem; font-weight:700;">🟢 مفتوحة للكل (بدون شرط السابق)</span>';
+                            tBadge = '<span style="color:#34d399; font-size:0.72rem; font-weight:700;">🟢 مفتوح</span>';
                         } else if (effectiveGlobal === false) {
-                            taskBadge = '<span style="color:#f87171; background:rgba(239,68,68,0.18); border:1px solid rgba(239,68,68,0.4); padding:2px 9px; border-radius:6px; font-size:0.73rem; font-weight:700;">🔒 مقفلة حالياً</span>';
+                            tBadge = '<span style="color:#f87171; font-size:0.72rem; font-weight:700;">🔒 مقفل</span>';
                         } else {
-                            taskBadge = '<span style="color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.35); padding:2px 9px; border-radius:6px; font-size:0.73rem; font-weight:700;">🔄 تفتح بالتسلسل</span>';
+                            tBadge = '<span style="color:#38bdf8; font-size:0.72rem; font-weight:700;">🔄 تسلسلي</span>';
                         }
 
                         const taskOverrides = overrides.filter(o => o.task_id === tid || o.task_id === lid);
-                        const overridesPillsHtml = taskOverrides.length > 0
-                            ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.08);">
-                                <span style="font-size:0.72rem; color:var(--text-muted); align-self:center;">استثناءات الطلاب النشطة:</span>
+                        const hasOverrides = taskOverrides.length > 0;
+                        const isDrawerOpen = window.openStudentDrawers.has(tid);
+
+                        const activeChips = hasOverrides
+                            ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
                                 ${taskOverrides.map(o => {
                                     const isUnl = o.is_unlocked === 1 || o.is_unlocked === true;
-                                    return `<span style="display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; background:${isUnl ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isUnl ? '#34d399' : '#f87171'}; border:1px solid ${isUnl ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'};">
-                                        👤 ${escapeHtml(o.username || o.user_id)}: ${isUnl ? '🔓 مفتوحة' : '🔒 مقفلة'}
-                                        <button onclick="removeStudentTaskOverride('${o.id}')" title="إلغاء الاستثناء" style="background:transparent; border:none; color:inherit; cursor:pointer; font-weight:900; padding:0 2px;">✕</button>
+                                    return `<span style="display:inline-flex; align-items:center; gap:5px; padding:2px 7px; border-radius:5px; font-size:0.71rem; font-weight:700; background:${isUnl ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)'}; color:${isUnl ? '#34d399' : '#f87171'}; border:1px solid ${isUnl ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'};">
+                                        👤 ${escapeHtml(o.username || o.user_id)}: ${isUnl ? '🔓' : '🔒'}
+                                        <button onclick="removeStudentTaskOverride('${o.id}')" title="إلغاء الاستثناء" style="background:transparent; border:none; color:inherit; cursor:pointer; font-weight:900; padding:0 1px;">✕</button>
                                     </span>`;
                                 }).join('')}
                                </div>`
                             : '';
 
                         return `
-                            <div style="background:rgba(15, 23, 42, 0.65); border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                        <span style="font-size:0.72rem; padding:2px 7px; border-radius:5px; background:rgba(168,85,247,0.15); color:#c084fc;">
+                            <div class="task-row-card">
+                                <div class="task-row-main">
+                                    <div class="task-info-side">
+                                        <span style="font-size:0.7rem; padding:2px 6px; border-radius:5px; background:${t._isCum ? 'rgba(168,85,247,0.18)' : 'rgba(255,255,255,0.06)'}; color:${t._isCum ? '#c084fc' : '#cbd5e1'}; font-weight:600;">
                                             ${t._isCum ? 'مراجعة تراكمية' : 'تاسك أساسي'}
                                         </span>
-                                        <strong style="color:white; font-size:0.9rem;">${escapeHtml(t.title)}</strong>
-                                        <code style="font-size:0.7rem; color:var(--text-dim); background:rgba(255,255,255,0.04); padding:2px 6px; border-radius:4px;">ID: ${escapeHtml(tid)}</code>
-                                        ${taskBadge}
+                                        <strong style="color:white; font-size:0.86rem;">${escapeHtml(t.title)}</strong>
+                                        <code style="font-size:0.68rem; color:var(--text-dim); background:rgba(255,255,255,0.04); padding:1px 5px; border-radius:4px;">ID: ${escapeHtml(tid)}</code>
+                                        ${tBadge}
                                     </div>
-                                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                        <button class="btn-action-sm btn-success" onclick="toggleAdminTaskStatus('${tid}', true)" style="${effectiveGlobal === true ? 'box-shadow: 0 0 10px rgba(16,185,129,0.5); font-weight:800;' : ''}">
-                                            🟢 فتح التاسك للكل
+                                    <div class="task-actions-side">
+                                        <!-- Sleek 3-Way Segmented Switch for Task -->
+                                        <div class="seg-control">
+                                            <button class="seg-btn ${effectiveGlobal === true ? 'active-open' : ''}" onclick="toggleAdminTaskStatus('${tid}', true)" title="فتح هذه المهمة للجميع">
+                                                🟢 مفتوح
+                                            </button>
+                                            <button class="seg-btn ${effectiveGlobal === undefined ? 'active-seq' : ''}" onclick="toggleAdminTaskStatus('${tid}', 'sequential')" title="تفتح بالتسلسل التلقائي بعد حل ما قبلها">
+                                                🔄 تسلسلي
+                                            </button>
+                                            <button class="seg-btn ${effectiveGlobal === false ? 'active-locked' : ''}" onclick="toggleAdminTaskStatus('${tid}', false)" title="قفل هذه المهمة مؤقتاً">
+                                                🔒 مقفل
+                                            </button>
+                                        </div>
+
+                                        <!-- Student Customization Toggle Button -->
+                                        <button class="btn-override-toggle ${hasOverrides ? 'has-overrides' : ''}" onclick="toggleStudentDrawer('${tid}')" title="تخصيص الصلاحية لطالب محدد">
+                                            👤 تخصيص لطالب ${hasOverrides ? `(${taskOverrides.length})` : ''}
                                         </button>
-                                        <button class="btn-action-sm btn-danger" onclick="toggleAdminTaskStatus('${tid}', false)" style="${effectiveGlobal === false ? 'box-shadow: 0 0 10px rgba(239,68,68,0.5); font-weight:800;' : ''}">
-                                            🔒 قفل التاسك للكل
-                                        </button>
-                                        <button class="btn-action-sm btn-info" onclick="toggleAdminTaskStatus('${tid}', 'sequential')" title="إرجاع للوضع التلقائي بالتسلسل">
-                                            🔄 تسلسل
-                                        </button>
-                                        <button class="btn-action-sm btn-danger" onclick="deleteAdminTaskOrLesson('${tid}', ${JSON.stringify(t.title)})" title="حذف التاسك">
+
+                                        <!-- Delete Task -->
+                                        <button class="btn-action-sm btn-danger" onclick="deleteAdminTaskOrLesson('${tid}', ${JSON.stringify(t.title)})" title="حذف التاسك" style="padding:4px 8px;">
                                             🗑️
                                         </button>
                                     </div>
                                 </div>
 
-                                <!-- Per-Student Control Bar directly on the task -->
-                                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:rgba(255,255,255,0.02); padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
-                                    <span style="font-size:0.75rem; color:#fbbf24; font-weight:700;">🎯 تحكم لطالب محدد:</span>
-                                    <select id="stu-sel-${tid}" class="form-input" style="margin-bottom:0; padding:5px 10px; font-size:0.78rem; max-width:240px; height:auto;">
-                                        ${studentOptionsHtml}
-                                    </select>
-                                    <button class="btn-action-sm btn-success" onclick="setStudentTaskAccess('${tid}', true)">
-                                        🔓 فتح للطالب المحدد
-                                    </button>
-                                    <button class="btn-action-sm btn-warn" onclick="setStudentTaskAccess('${tid}', false)">
-                                        🔒 قفل على الطالب المحدد
-                                    </button>
+                                <!-- Collapsible Student Override Drawer -->
+                                <div id="drawer-${tid}" class="student-override-drawer ${isDrawerOpen ? 'open' : ''}">
+                                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                        <span style="font-size:0.75rem; color:#fbbf24; font-weight:700;">🎯 تخصيص الصلاحية لطالب محدد:</span>
+                                        <select id="stu-sel-${tid}" class="form-input" style="margin-bottom:0; padding:4px 8px; font-size:0.76rem; max-width:210px; height:auto;">
+                                            ${studentOptionsHtml}
+                                        </select>
+                                        <button class="btn-action-sm btn-success" onclick="setStudentTaskAccess('${tid}', true)" style="padding:4px 10px; font-size:0.74rem;">
+                                            🔓 فتح له
+                                        </button>
+                                        <button class="btn-action-sm btn-warn" onclick="setStudentTaskAccess('${tid}', false)" style="padding:4px 10px; font-size:0.74rem;">
+                                            🔒 قفل عليه
+                                        </button>
+                                    </div>
+                                    ${activeChips}
                                 </div>
-                                ${overridesPillsHtml}
                             </div>
                         `;
                     }).join('');
 
                 return `
-                    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:14px; padding:16px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding-bottom:12px; margin-bottom:12px; border-bottom:1px solid var(--border-color);">
-                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                <span style="font-size:0.74rem; padding:3px 9px; border-radius:6px; background:rgba(14,165,233,0.15); color:#38bdf8; font-weight:700;">
-                                    ${lesson.track === 'university' ? '🎓 قسم الجامعات' : '🐍 المسار العام'}
+                    <div class="lesson-accordion-card">
+                        <!-- Lesson Header (Accordion Toggle) -->
+                        <div class="lesson-card-header" onclick="toggleLessonAccordion('${lid}')">
+                            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                <span class="lesson-chevron-icon ${isExpanded ? 'expanded' : ''}">▼</span>
+                                <span style="font-size:0.72rem; padding:2px 8px; border-radius:5px; background:rgba(14,165,233,0.15); color:#38bdf8; font-weight:700;">
+                                    ${lesson.track === 'university' ? '🎓 جامعة' : '🐍 عام'}
                                 </span>
-                                <span style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(lesson.category || '')}</span>
-                                <strong style="font-size:1.02rem; color:white;">${escapeHtml(lesson.title)}</strong>
-                                ${lessonStatusBadge}
+                                <span style="font-size:0.72rem; color:var(--text-muted);">${escapeHtml(lesson.category || '')}</span>
+                                <strong style="font-size:0.95rem; color:white;">${escapeHtml(lesson.title)}</strong>
+                                <span style="font-size:0.7rem; color:#94a3b8; background:rgba(255,255,255,0.05); padding:1px 6px; border-radius:4px;">
+                                    ${taskCount} مهام
+                                </span>
+                                ${lBadge}
                             </div>
-                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                <button class="btn-action-sm btn-success" onclick="toggleAdminTaskStatus('${lid}', true)">
-                                    🟢 فتح الدرس بالكامل للكل
-                                </button>
-                                <button class="btn-action-sm btn-danger" onclick="toggleAdminTaskStatus('${lid}', false)">
-                                    🔒 قفل الدرس بالكامل
-                                </button>
-                                <button class="btn-action-sm btn-info" onclick="toggleAdminTaskStatus('${lid}', 'sequential')">
-                                    🔄 وضع التسلسل
-                                </button>
-                                <button class="btn-action-sm btn-danger" onclick="deleteAdminTaskOrLesson('${lid}', ${JSON.stringify(lesson.title)})">
-                                    🗑️ حذف الدرس
+
+                            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+                                <!-- Sleek 3-Way Segmented Switch for Lesson -->
+                                <div class="seg-control">
+                                    <button class="seg-btn ${lState === true ? 'active-open' : ''}" onclick="toggleAdminTaskStatus('${lid}', true)" title="فتح جميع مهام هذا الدرس فوراً للجميع">
+                                        🟢 فتح الدرس
+                                    </button>
+                                    <button class="seg-btn ${lState === undefined ? 'active-seq' : ''}" onclick="toggleAdminTaskStatus('${lid}', 'sequential')" title="إرجاع مهام هذا الدرس للتسلسل التلقائي">
+                                        🔄 تسلسلي
+                                    </button>
+                                    <button class="seg-btn ${lState === false ? 'active-locked' : ''}" onclick="toggleAdminTaskStatus('${lid}', false)" title="قفل هذا الدرس بالكامل">
+                                        🔒 قفل الدرس
+                                    </button>
+                                </div>
+
+                                <button class="btn-action-sm btn-danger" onclick="deleteAdminTaskOrLesson('${lid}', ${JSON.stringify(lesson.title)})" title="حذف الدرس كاملاً" style="padding:4px 8px;">
+                                    🗑️
                                 </button>
                             </div>
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:10px;">
+
+                        <!-- Tasks Body (Shown only when expanded) -->
+                        <div class="lesson-tasks-body" style="${isExpanded ? 'display:flex;' : 'display:none;'}">
                             ${tasksHtml}
                         </div>
                     </div>

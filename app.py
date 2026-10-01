@@ -419,6 +419,20 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                     db.toggle_task_status(t["id"], is_open_val)
             return self.send_json(res, status=200 if res["success"] else 400)
 
+        # Admin: Bulk Toggle All Tasks (Open All 🟢 / Lock All 🔴 / Sequential All 🔄)
+        if path == "/api/admin/tasks/bulk-toggle":
+            if current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            action = str(body_data.get("action", "")).strip()
+            all_lessons = engine.load_all_lessons()
+            all_ids = []
+            for l in all_lessons:
+                all_ids.append(l["id"])
+                for t in l.get("tasks", []) + l.get("cumulative_tasks", []):
+                    all_ids.append(t["id"])
+            res = db.bulk_toggle_tasks(action, all_ids)
+            return self.send_json(res, status=200 if res["success"] else 400)
+
         # Admin: Delete Task or Lesson
         if path == "/api/admin/tasks/delete":
             if current_user.get("role") != "admin":

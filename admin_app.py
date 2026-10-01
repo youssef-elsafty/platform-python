@@ -180,6 +180,17 @@ class AdminHandler(SimpleHTTPRequestHandler):
                     db.toggle_task_status(t["id"], is_open_val)
             return self.send_json(res, status=200 if res.get("success") else 400)
 
+        if path == "/api/admin/tasks/bulk-toggle":
+            action = str(data.get("action", "")).strip()
+            all_lessons = engine.load_all_lessons()
+            all_ids = []
+            for l in all_lessons:
+                all_ids.append(l["id"])
+                for t in l.get("tasks", []) + l.get("cumulative_tasks", []):
+                    all_ids.append(t["id"])
+            res = db.bulk_toggle_tasks(action, all_ids)
+            return self.send_json(res, status=200 if res.get("success") else 400)
+
         if path == "/api/admin/tasks/delete":
             target_id = str(data.get("target_id", "")).strip()
             res = engine.delete_task_or_lesson(target_id)
