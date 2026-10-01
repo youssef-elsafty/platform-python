@@ -107,7 +107,7 @@ def init_db():
     """Initializes schema and runs migrations"""
     with get_db() as db:
         if db.is_pg:
-            for migration_file in ["001_initial_schema.sql", "002_admin_and_logs.sql", "003_contact_inquiries.sql", "004_task_submissions.sql", "005_task_duration.sql", "006_exams.sql", "007_user_saved_code_and_task_controls.sql"]:
+            for migration_file in ["001_initial_schema.sql", "002_admin_and_logs.sql", "003_contact_inquiries.sql", "004_task_submissions.sql", "005_task_duration.sql", "006_exams.sql", "007_user_saved_code_and_task_controls.sql", "008_admin_dashboard_features.sql"]:
                 m_path = os.path.join(os.path.dirname(__file__), "migrations", migration_file)
                 if os.path.exists(m_path):
                     with open(m_path, "r", encoding="utf-8") as f:
@@ -242,6 +242,33 @@ def init_db():
                     task_id TEXT PRIMARY KEY,
                     is_open BOOLEAN NOT NULL DEFAULT 1,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS calendar_events (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    event_date TEXT NOT NULL,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS user_task_overrides (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    is_unlocked BOOLEAN NOT NULL DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
@@ -543,7 +570,9 @@ def get_admin_dashboard_stats():
             "task_submissions": task_submissions,
             "uploaded_submissions": uploaded_submissions,
             "all_exams": all_exams,
-            "exam_submissions": exam_submissions
+            "exam_submissions": exam_submissions,
+            "task_status_map": get_task_status_map(),
+            "task_overrides": get_all_overrides()
         }
 
 def save_uploaded_submission(user_id: str, original_filename: str, saved_filename: str, file_size: int, task_id: str = None, lesson_id: str = None, notes: str = ""):
@@ -700,18 +729,31 @@ def get_user_task_codes(user_id: str) -> dict:
         rows = db.fetchall("SELECT task_id, code FROM user_saved_code WHERE user_id = ?", (user_id,))
         return {r["task_id"]: r["code"] for r in rows}
 
-def toggle_task_status(task_id: str, is_open: bool):
+def toggle_task_status(task_id: str, is_open):
     if not task_id:
         return {"success": False, "error": "رمز المهمة مطلوب"}
     try:
+        if is_open is None or is_open == "sequential":
+            return reset_task_status(task_id)
+        is_open_bool = bool(is_open is True or is_open == 1 or str(is_open).lower() == "true")
         with get_db() as db:
             db.execute("""
                 INSERT INTO task_status_controls (task_id, is_open)
                 VALUES (?, ?)
                 ON CONFLICT (task_id) DO UPDATE SET is_open = excluded.is_open, updated_at = CURRENT_TIMESTAMP
-            """, (task_id, 1 if is_open else 0))
-        status_str = "مفتوحة للطلاب 🟢" if is_open else "مغلقة وسرية 🔴"
-        return {"success": True, "task_id": task_id, "is_open": is_open, "message": f"تم تغيير حالة المهمة إلى: {status_str}"}
+            """, (task_id, 1 if is_open_bool else 0))
+        status_str = "مفتوحة لجميع الطلاب فورا 🟢" if is_open_bool else "مغلقة وسرية 🔒"
+        return {"success": True, "task_id": task_id, "is_open": is_open_bool, "message": f"تم تغيير حالة المهمة إلى: {status_str}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def reset_task_status(task_id: str):
+    if not task_id:
+        return {"success": False, "error": "رمز المهمة مطلوب"}
+    try:
+        with get_db() as db:
+            db.execute("DELETE FROM task_status_controls WHERE task_id = ?", (task_id,))
+        return {"success": True, "task_id": task_id, "is_open": None, "message": "تم إعادة المهمة إلى وضع التسلسل التلقائي 🔄"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -750,5 +792,106 @@ def toggle_user_status(user_id: str, is_active: bool):
             db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
         state_str = "مفعل 🟢" if is_active else "محظور 🔴"
         return {"success": True, "message": f"تم تغيير حالة حساب {user['username']} إلى: {state_str}"}
+
+
+
+# ================= ADMIN DASHBOARD FEATURES =================
+def add_calendar_event(title: str, event_date: str, description: str = ""):
+    event_id = str(uuid.uuid4())
+    with get_db() as db:
+        db.execute("INSERT INTO calendar_events (id, title, event_date, description) VALUES (?, ?, ?, ?)",
+                   (event_id, title, event_date, description))
+    return event_id
+
+def get_calendar_events():
+    with get_db() as db:
+        return db.fetchall("SELECT * FROM calendar_events ORDER BY event_date ASC")
+
+def delete_calendar_event(event_id: str):
+    with get_db() as db:
+        db.execute("DELETE FROM calendar_events WHERE id = ?", (event_id,))
+
+def add_notification(title: str, message: str):
+    notif_id = str(uuid.uuid4())
+    with get_db() as db:
+        db.execute("INSERT INTO notifications (id, title, message) VALUES (?, ?, ?)",
+                   (notif_id, title, message))
+    return notif_id
+
+def get_notifications():
+    with get_db() as db:
+        return db.fetchall("SELECT * FROM notifications ORDER BY created_at DESC LIMIT 50")
+
+def delete_notification(notif_id: str):
+    with get_db() as db:
+        db.execute("DELETE FROM notifications WHERE id = ?", (notif_id,))
+
+def set_user_task_override(user_id: str, task_id: str, is_unlocked: bool):
+    if not user_id or not task_id:
+        return {"success": False, "error": "يرجى تحديد الطالب والمهمة"}
+    override_id = str(uuid.uuid4())
+    is_unlocked_bool = bool(is_unlocked is True or is_unlocked == 1 or str(is_unlocked).lower() == "true")
+    with get_db() as db:
+        existing = db.fetchone("SELECT id FROM user_task_overrides WHERE user_id = ? AND task_id = ?", (user_id, task_id))
+        if existing:
+            db.execute("UPDATE user_task_overrides SET is_unlocked = ? WHERE id = ?", (1 if is_unlocked_bool else 0, existing["id"]))
+            override_id = existing["id"]
+        else:
+            db.execute("INSERT INTO user_task_overrides (id, user_id, task_id, is_unlocked) VALUES (?, ?, ?, ?)",
+                       (override_id, user_id, task_id, 1 if is_unlocked_bool else 0))
+    return {"success": True, "id": override_id, "user_id": user_id, "task_id": task_id, "is_unlocked": is_unlocked_bool}
+
+def get_separated_task_overrides(user_id: str = None):
+    """Returns (all_overrides_map, user_specific_overrides_map) so user-specific overrides always take priority."""
+    with get_db() as db:
+        all_rows = db.fetchall("SELECT task_id, is_unlocked FROM user_task_overrides WHERE user_id = 'all'")
+        all_map = {r["task_id"]: bool(r["is_unlocked"] == 1 or r["is_unlocked"] is True) for r in all_rows}
+        user_map = {}
+        if user_id:
+            u_rows = db.fetchall("SELECT task_id, is_unlocked FROM user_task_overrides WHERE user_id = ?", (user_id,))
+            user_map = {r["task_id"]: bool(r["is_unlocked"] == 1 or r["is_unlocked"] is True) for r in u_rows}
+        return all_map, user_map
+
+def get_user_task_overrides(user_id: str):
+    all_map, user_map = get_separated_task_overrides(user_id)
+    merged = dict(all_map)
+    merged.update(user_map)
+    return merged
+
+def get_all_overrides():
+    with get_db() as db:
+        return db.fetchall("""
+            SELECT uto.id, uto.user_id, COALESCE(u.username, CASE WHEN uto.user_id = 'all' THEN 'جميع الطلاب' ELSE uto.user_id END) as username,
+                   uto.task_id, uto.is_unlocked, uto.created_at
+            FROM user_task_overrides uto
+            LEFT JOIN users u ON uto.user_id = u.id
+            ORDER BY uto.created_at DESC
+        """)
+
+def remove_task_override(override_id: str):
+    with get_db() as db:
+        db.execute("DELETE FROM user_task_overrides WHERE id = ?", (override_id,))
+    return {"success": True}
+
+def delete_contact_inquiry(inquiry_id: str):
+    with get_db() as db:
+        db.execute("DELETE FROM contact_inquiries WHERE id = ?", (inquiry_id,))
+    return {"success": True, "message": "تم حذف الرسالة بنجاح"}
+
+def update_exam_submission_score(submission_id: str, new_score: int):
+    with get_db() as db:
+        db.execute("UPDATE exam_submissions SET score = ? WHERE id = ?", (new_score, submission_id))
+    return {"success": True, "message": "تم اعتماد وتحديث درجة الطالب بنجاح ⭐"}
+
+def approve_task_submission(submission_id: str):
+    if not submission_id:
+        return {"success": False, "error": "معرف التسليم مطلوب"}
+    with get_db() as db:
+        sub = db.fetchone("SELECT id, user_id, task_id, lesson_id, duration_seconds FROM task_submissions WHERE id = ?", (submission_id,))
+        if not sub:
+            return {"success": False, "error": "التسليم غير موجود"}
+        db.execute("UPDATE task_submissions SET passed = 1 WHERE id = ?", (submission_id,))
+    mark_task_done(sub["user_id"], sub["task_id"], sub["lesson_id"], duration_seconds=sub.get("duration_seconds") or 0)
+    return {"success": True, "message": "تم اعتماد حل الطالب كإجابة صحيحة وتسجيل اجتيازه للمهمة بنجاح ✅"}
 
 

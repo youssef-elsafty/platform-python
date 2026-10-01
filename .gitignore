@@ -3,4 +3,5 @@ __pycache__/
 progress.db
 .gemini/
 uploads/
-
+scratch/
+*_backup.html

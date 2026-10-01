@@ -3,8 +3,9 @@ import sys
 import json
 import base64
 import uuid
+import datetime
 import urllib.parse
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import db
 import engine
 import security
@@ -26,6 +27,11 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
         for header, val in security.SECURITY_HEADERS.items():
             self.send_header(header, val)
 
+        # Disable aggressive caching so design and CSS updates reflect immediately
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+
         # 2. Strict Origin / CORS Policy (Never '*')
         origin = self.headers.get("Origin", "")
         host = self.headers.get("Host", "")
@@ -33,7 +39,7 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
         if ALLOWED_ORIGIN and origin == ALLOWED_ORIGIN:
             self.send_header('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
             self.send_header('Access-Control-Allow-Credentials', 'true')
-        elif origin and (f"localhost:{PORT}" in origin or f"127.0.0.1:{PORT}" in origin or host in origin):
+        elif origin and ("localhost" in origin or "127.0.0.1" in origin):
             self.send_header('Access-Control-Allow-Origin', origin)
             self.send_header('Access-Control-Allow-Credentials', 'true')
 
@@ -90,12 +96,10 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             self.path = "/templates/index.html"
             return super().do_GET()
 
-        # Graceful redirect for removed admin dashboard
-        if path in ("/admin", "/admin.html"):
-            self.send_response(302)
-            self.send_header("Location", "/")
-            self.end_headers()
-            return
+        # Serve admin dashboard directly
+        if path in ("/admin", "/admin.html", "/dashboard"):
+            self.path = "/templates/admin.html"
+            return super().do_GET()
 
         current_user = self.get_current_user()
         session_token = self.get_session_token()
@@ -105,7 +109,28 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             if not current_user or current_user.get("role") != "admin":
                 return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
             stats = db.get_admin_dashboard_stats()
+            try:
+                all_lessons = engine.load_all_lessons()
+                stats["all_lessons_meta"] = [
+                    {
+                        "id": l.get("id"),
+                        "title": l.get("title"),
+                        "category": l.get("category", "مقررات بايثون"),
+                        "track": l.get("track", "general"),
+                        "order": l.get("order", 1),
+                        "tasks": l.get("tasks", []),
+                        "cumulative_tasks": l.get("cumulative_tasks", []),
+                        "tasks_count": len(l.get("tasks", [])) + len(l.get("cumulative_tasks", []))
+                    }
+                    for l in all_lessons
+                ]
+            except Exception:
+                stats["all_lessons_meta"] = []
             return self.send_json(stats)
+
+        if path == "/api/overrides":
+            overrides = db.get_all_overrides()
+            return self.send_json(overrides)
 
         # 1. Auth Me Endpoint + CSRF token provisioning
         if path == "/api/auth/me":
@@ -135,36 +160,37 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 return self.send_json({"error": "الدرس غير موجود"}, status=404)
             
             uid = current_user["id"] if current_user else None
+            is_admin = bool(current_user and current_user.get("role") == "admin")
             state = engine.get_platform_state(user_id=uid)
             lesson_status = next((l for l in state["lessons"] if l["id"] == lesson_id), None)
             
-            if not lesson_status or not lesson_status["unlocked"]:
+            if (not lesson_status or not lesson_status["unlocked"]) and not is_admin:
                 return self.send_json({
-                    "error": "هذا الدرس مقفل! يجب إنهاء مهام ومراجعات الدروس السابقة أولاً لتتمكن من فتحه 🔒"
+                    "error": "هذا الدرس مقفل! يجب إنهاء مهام ومراجعات الدروس السابقة أولاً أو فتحه من قِبل المشرف لتتمكن من دخوله 🔒"
                 }, status=403)
             
             completed_tasks = set(state["completed_tasks"])
-            task_status_map = db.get_task_status_map()
+            effective_status_map = state.get("task_status_map", {})
             
             tasks = []
             for t in lesson.get("tasks", []):
                 t_copy = dict(t)
                 t_copy["completed"] = t["id"] in completed_tasks
-                t_copy["is_open"] = task_status_map.get(t["id"], True)
+                t_copy["is_open"] = effective_status_map.get(t["id"], True)
                 tasks.append(t_copy)
 
             cumulative_tasks = []
             for ct in lesson.get("cumulative_tasks", []):
                 ct_copy = dict(ct)
                 ct_copy["completed"] = ct["id"] in completed_tasks
-                ct_copy["is_open"] = task_status_map.get(ct["id"], True)
+                ct_copy["is_open"] = effective_status_map.get(ct["id"], True)
                 cumulative_tasks.append(ct_copy)
 
             response_data = dict(lesson)
             response_data["tasks"] = tasks
             response_data["cumulative_tasks"] = cumulative_tasks
-            response_data["is_completed"] = lesson_status["completed"]
-            response_data["is_open"] = task_status_map.get(lesson_id, True)
+            response_data["is_completed"] = lesson_status["completed"] if lesson_status else False
+            response_data["is_open"] = effective_status_map.get(lesson_id, True)
             return self.send_json(response_data)
 
         # 4. Download / View Uploaded Submission File (Admin only)
@@ -195,18 +221,38 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             exams = db.get_all_exams() if is_admin else db.get_open_exams()
             return self.send_json({"exams": exams})
 
-        # 6. Single Exam Detail Endpoint
-        if path.startswith("/api/exam/"):
-            exam_id = path.replace("/api/exam/", "").strip("/")
-            exam = db.get_exam_by_id(exam_id)
-            if not exam:
-                return self.send_json({"error": "الامتحان غير موجود"}, status=404)
-            is_admin = current_user and current_user.get("role") == "admin"
-            if not is_admin and not exam.get("is_open"):
-                return self.send_json({"error": "هذا الامتحان مغلق وسري حالياً من قِبل المشرف 🔒"}, status=403)
-            return self.send_json({"exam": exam})
+        # 7. Notifications Endpoint
+        if path == "/api/notifications":
+            db_notifs = db.get_notifications() if hasattr(db, 'get_notifications') else []
+            notifications = []
+            for idx, dn in enumerate(db_notifs):
+                notifications.append({
+                    "id": dn["id"],
+                    "title": dn["title"],
+                    "message": dn["message"],
+                    "type": "info",
+                    "timestamp": str(dn["created_at"]),
+                    "read": False
+                })
+            open_exams = db.get_open_exams()
+            if open_exams:
+                notifications.insert(0, {
+                    "id": f"notif_exam_{open_exams[0]['id']}",
+                    "title": f"⚡ اختبار جديد متاح: {open_exams[0]['title']}",
+                    "message": "قم باجتياز الاختبار لتقييم مهاراتك الأكاديمية بنجاح!",
+                    "type": "warning",
+                    "timestamp": "جديد",
+                    "read": False
+                })
+            return self.send_json({"notifications": notifications, "unread_count": sum(1 for n in notifications if not n["read"])})
+
+        # 8. Calendar Endpoint
+        if path == "/api/calendar":
+            events = db.get_calendar_events() if hasattr(db, 'get_calendar_events') else []
+            return self.send_json({"events": events})
 
         return super().do_GET()
+
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -339,13 +385,38 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             res = db.toggle_user_status(user_id, is_active)
             return self.send_json(res, status=200 if res["success"] else 400)
 
-        # Admin: Toggle Task Status (Open 🟢 / Lock 🔴)
+        # Admin: Set / Toggle Per-User Task Override
+        if path == "/api/overrides":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            res = db.set_user_task_override(body_data.get("user_id"), body_data.get("task_id"), body_data.get("is_unlocked", True))
+            return self.send_json(res, status=200 if res.get("success") else 400)
+
+        # Admin: Remove Per-User Task Override
+        if path == "/api/admin/overrides/remove":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            override_id = str(body_data.get("override_id", "")).strip()
+            if override_id:
+                db.remove_task_override(override_id)
+                return self.send_json({"success": True})
+            return self.send_json({"success": False, "error": "معرف الاستثناء مطلوب"}, status=400)
+
+        # Admin: Toggle Task Status (Open 🟢 / Lock 🔴 / Sequential 🔄)
         if path == "/api/admin/tasks/toggle-status":
             if current_user.get("role") != "admin":
                 return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
             task_id = str(body_data.get("task_id", "")).strip()
-            is_open = bool(body_data.get("is_open", False))
-            res = db.toggle_task_status(task_id, is_open)
+            raw_is_open = body_data.get("is_open", False)
+            if raw_is_open is None or raw_is_open == "sequential":
+                is_open_val = "sequential"
+            else:
+                is_open_val = bool(raw_is_open)
+            res = db.toggle_task_status(task_id, is_open_val)
+            lesson = engine.get_lesson_by_id(task_id)
+            if lesson:
+                for t in lesson.get("tasks", []) + lesson.get("cumulative_tasks", []):
+                    db.toggle_task_status(t["id"], is_open_val)
             return self.send_json(res, status=200 if res["success"] else 400)
 
         # Admin: Delete Task or Lesson
@@ -355,6 +426,15 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             target_id = str(body_data.get("target_id", "")).strip()
             res = engine.delete_task_or_lesson(target_id)
             return self.send_json(res, status=200 if res["success"] else 400)
+
+        # Admin: Delete Contact Inquiry
+        if path == "/api/admin/inquiries/delete":
+            if current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            inquiry_id = str(body_data.get("inquiry_id", "")).strip()
+            res = db.delete_contact_inquiry(inquiry_id)
+            return self.send_json(res, status=200 if res["success"] else 400)
+
 
         # Save Code Draft (Student Auto-Save)
         if path == "/api/save-code-draft":
@@ -369,6 +449,50 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
         if path == "/api/reset":
             db.reset_user_progress(current_user["id"])
             return self.send_json({"success": True, "message": "تم إعادة ضبط التقدم بنجاح"})
+
+        # AI Learning Assistant Chat Endpoint
+        if path == "/api/ai/chat":
+            user_msg = str(body_data.get("message", "")).strip()
+            submitted_code = str(body_data.get("code", "")).strip()
+            lesson_id = str(body_data.get("lesson_id", "")).strip()
+            
+            if not user_msg and not submitted_code:
+                return self.send_json({"reply": "يرجى كتابة سؤالك أو إدخال الكود الذي تريد استشارتي بشأنه! 🤖"}, status=400)
+
+            context_header = ""
+            if lesson_id:
+                lesson = engine.get_lesson_by_id(lesson_id)
+                if lesson:
+                    context_header = f"📌 **سياق الدرس الحالي**: {lesson.get('title', '')}\n\n"
+
+            # Analyze code if present
+            analysis_text = ""
+            if submitted_code:
+                run_res = engine.execute_code_safely(submitted_code)
+                if not run_res["success"] or run_res["exit_code"] != 0:
+                    err_explanation = engine.translate_python_error(run_res["stderr"])
+                    analysis_text = f"\n\n🔍 **تحليل الكود المرسل**:\nتم اكتشاف النتيجة التالية عند تجربة الكود:\n```text\n{run_res['stderr'][:400]}\n```\n{err_explanation}"
+                else:
+                    analysis_text = f"\n\n🟢 **مخرجات تشغيل الكود**:\n```text\n{run_res['stdout'][:400]}\n```\nالكود يعطي مخرجات سليمة بدون أخطاء تشغيلية! 🎉"
+
+            # Contextual smart Arabic responses based on student prompt
+            reply = ""
+            msg_lower = user_msg.lower()
+
+            if "خطأ" in user_msg or "مش شغال" in user_msg or "مشكلة" in user_msg:
+                reply = f"{context_header}أهلاً بك! دعنا نراجع الكود معاً 🛠️.{analysis_text}\n\n💡 **نصيحة سريعة**: تأكد دائماً من مطابقة أسماء المتغيرات والأقواس والنقطتين الرأسيتين `:` بعد الشروط والحلقات."
+            elif "شرح" in user_msg or "يعني ايه" in user_msg or "معنى" in user_msg or "شرح" in msg_lower:
+                reply = f"{context_header}مرحباً بك! لغة بايثون تتميز بسيادتها وبساطة تركيبها البرمجي 🐍.\n\n- **المتغيرات Variables**: لحفظ البيانات مثل `x = 10`.\n- **الجمل الشرطية Conditionals**: لاتخاذ القرارات باستخدام `if` و `else`.\n- **الحلقات Loops**: لتكرار العمليات مثل `for i in range(5):`."
+            elif "تلميح" in user_msg or "حل" in user_msg or "تمرين" in user_msg:
+                reply = f"{context_header}إليك تلميحاً ذكياً للمهمة 💡:\nفكّر في تجزئة المطلوب إلى خطوات صغيرة:\n1. قم بتعريف المتغيرات المطلوبة أولاً.\n2. استخدم الجملة الشرطية أو التكرارية المناسبة.\n3. اطبع الناتج باستخدام دالة `print()` بالصيغة المطلوبة بالضبط."
+            else:
+                reply = f"{context_header}أهلاً بك يا بطل البرمجة! 🚀 كيف يمكنني مساعدتك في تعلم بايثون اليوم؟{analysis_text}"
+
+            return self.send_json({
+                "success": True,
+                "reply": reply,
+                "timestamp": datetime.datetime.now().strftime("%I:%M %p")
+            })
 
         # Run Code (Test only)
         if path == "/api/run":
@@ -398,10 +522,11 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             # Always save the student's code permanently whenever they submit
             db.save_user_task_code(current_user["id"], task_id, code)
 
-            # Check if task is locked by admin
-            task_status_map = db.get_task_status_map()
-            if not task_status_map.get(task_id, True) and current_user.get("role") != "admin":
-                return self.send_json({"passed": False, "feedback": "عذراً! هذه المهمة مغلقة وسرية حالياً من قِبل المشرف ولا يمكن حلها 🔒"}, status=403)
+            # Check if task is locked for this user (respecting per-student overrides and global status)
+            state_check = engine.get_platform_state(user_id=current_user["id"])
+            effective_status = state_check.get("task_status_map", {})
+            if not effective_status.get(task_id, True) and current_user.get("role") != "admin":
+                return self.send_json({"passed": False, "feedback": "عذراً! هذه المهمة مغلقة حالياً من قِبل المشرف ولا يمكن تسليم حلها 🔒"}, status=403)
 
             lesson = engine.get_lesson_by_id(lesson_id)
             if not lesson:
@@ -484,11 +609,22 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 notes=notes
             )
 
-            # If it's a python script or text, also extract text to send back to editor if needed
+            # If it's a python script, text, or jupyter notebook, extract text to send back to editor if needed
             extracted_code = ""
             if ext in (".py", ".txt"):
                 try:
                     extracted_code = file_bytes.decode("utf-8", errors="replace")
+                except Exception:
+                    pass
+            elif ext == ".ipynb":
+                try:
+                    nb_data = json.loads(file_bytes.decode("utf-8", errors="replace"))
+                    code_cells = []
+                    for cell in nb_data.get("cells", []):
+                        if cell.get("cell_type") == "code":
+                            src = cell.get("source", [])
+                            code_cells.append("".join(src) if isinstance(src, list) else str(src))
+                    extracted_code = "\n\n".join(c for c in code_cells if c.strip())
                 except Exception:
                     pass
 
@@ -500,7 +636,31 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 "extracted_code": extracted_code
             })
 
-        # Admin: Create New Lesson / Task
+        # Admin: Approve Student Task Submission Manually
+        if path == "/api/admin/submissions/approve":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            sub_id = str(body_data.get("submission_id", "")).strip()
+            res = db.approve_task_submission(sub_id)
+            return self.send_json(res, status=200 if res.get("success") else 400)
+
+        # Admin: Preview / Extract Output from Reference Code
+        if path == "/api/admin/run-reference-code":
+            if current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            ref_code = str(body_data.get("reference_code", "")).strip()
+            if not ref_code:
+                return self.send_json({"success": False, "error": "يرجى كتابة كود الحل النموذجي أولاً."}, status=400)
+            norm_ref = engine.heal_common_syntax_slips(ref_code)
+            res = engine.execute_code_safely(norm_ref)
+            return self.send_json({
+                "success": res["success"],
+                "stdout": res["stdout"].strip(),
+                "stderr": res["stderr"],
+                "normalized_code": norm_ref
+            })
+
+        # Admin: Create New Lesson / Task (Supports Model-Free Smart Grading!)
         if path == "/api/admin/create-task":
             if current_user.get("role") != "admin":
                 return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
@@ -514,10 +674,21 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             instruction = str(body_data.get("instruction", "")).strip()
             starter_code = str(body_data.get("starter_code", "# اكتب الكود هنا\n"))
             expected_output = str(body_data.get("expected_output", "")).strip()
+            reference_code = str(body_data.get("reference_code", "")).strip()
+            extra_test_cases = body_data.get("extra_test_cases", "")
             hint = str(body_data.get("hint", "")).strip()
+            initial_status = str(body_data.get("initial_status", "open_all")).strip()
 
-            if not title or not task_title or not instruction or not expected_output:
-                return self.send_json({"success": False, "error": "يرجى تعبئة جميع الحقول المطلوبة (عنوان الدرس، عنوان المهمة، التعليمات، والمخرجات المتوقعة)."}, status=400)
+            if not title or not task_title or not instruction:
+                return self.send_json({"success": False, "error": "يرجى تعبئة الحقول الأساسية فقط (عنوان الدرس، عنوان المهمة، ونص المطلوب)."}, status=400)
+
+            resolved_expected, norm_ref, test_cases = engine.build_task_test_cases(
+                expected_output=expected_output,
+                reference_code=reference_code,
+                extra_test_cases=extra_test_cases,
+                starter_code=starter_code,
+                instruction=instruction
+            )
 
             # Generate IDs and determine next order for this track
             all_lessons = engine.load_all_lessons()
@@ -527,6 +698,18 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             lesson_id = f"{prefix}_lesson_{int(uuid.uuid1().time)}"
             task_id = f"{prefix}_task_{int(uuid.uuid1().time)}"
 
+            task_obj = {
+                "id": task_id,
+                "type": "lesson_task",
+                "title": task_title,
+                "instruction": instruction,
+                "starter_code": starter_code,
+                "test_cases": test_cases,
+                "hint": hint or "ركز في المطلوب بدقة؛ يمكنك كتابة الحل بأي طريقة برمجية صحيحة."
+            }
+            if norm_ref:
+                task_obj["reference_code"] = norm_ref
+
             new_lesson_obj = {
                 "id": lesson_id,
                 "track": track,
@@ -535,22 +718,7 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
                 "category": category,
                 "description": description or f"مهمة تطبيقية عملية في {title}",
                 "content": content or f"### {title}\n\nتطبيق عملي وتمرين مباشر وممتع تم نشره عبر المشرف.",
-                "tasks": [
-                    {
-                        "id": task_id,
-                        "type": "lesson_task",
-                        "title": task_title,
-                        "instruction": instruction,
-                        "starter_code": starter_code,
-                        "test_cases": [
-                            {
-                                "type": "exact_output",
-                                "expected": expected_output
-                            }
-                        ],
-                        "hint": hint or "ركز في المطلوب بدقة واطبع الناتج تماماً كما هو محدد."
-                    }
-                ],
+                "tasks": [task_obj],
                 "cumulative_tasks": []
             }
 
@@ -561,10 +729,18 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             try:
                 with open(filepath, "w", encoding="utf-8") as f:
                     json.dump(new_lesson_obj, f, ensure_ascii=False, indent=2)
+                if initial_status == "open_all":
+                    db.toggle_task_status(lesson_id, True)
+                    db.toggle_task_status(task_id, True)
+                elif initial_status == "locked":
+                    db.toggle_task_status(lesson_id, False)
+                    db.toggle_task_status(task_id, False)
                 return self.send_json({
                     "success": True,
-                    "message": f"تم نشر الدرس والمهمة '{title}' بنجاح في { 'قسم الجامعات' if track == 'university' else 'المسار العام' }!",
-                    "lesson_id": lesson_id
+                    "message": f"تم نشر الدرس والمهمة '{title}' بنجاح (نظام التقييم: {resolved_expected})!",
+                    "lesson_id": lesson_id,
+                    "task_id": task_id,
+                    "resolved_expected": resolved_expected
                 })
             except Exception as e:
                 return self.send_json({"success": False, "error": f"فشل حفظ المهمة: {str(e)}"}, status=500)
@@ -614,6 +790,16 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
             exam_id = str(body_data.get("exam_id", "")).strip() or None
             subs = db.get_exam_submissions(exam_id)
             return self.send_json({"submissions": subs})
+
+        # Admin: Grade / Override Exam Submission Score
+        if path == "/api/admin/exams/grade-submission":
+            if not current_user or current_user.get("role") != "admin":
+                return self.send_json({"error": "غير مصرح: للمشرف فقط"}, status=403)
+            sub_id = str(body_data.get("submission_id", "")).strip()
+            new_score = int(body_data.get("new_score", 0))
+            res = db.update_exam_submission_score(sub_id, new_score)
+            return self.send_json(res)
+
 
         # Student / User: Submit Exam Solution
         if path == "/api/exam/submit":
@@ -687,7 +873,7 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
 def run_server():
     db.init_db()
     server_address = ('', PORT)
-    httpd = HTTPServer(server_address, PythonLearningHandler)
+    httpd = ThreadingHTTPServer(server_address, PythonLearningHandler)
     print("==================================================")
     print(f"Python Mastery Platform running on PORT {PORT} (Phase 5 Secured)")
     print(f"Open in browser: http://localhost:{PORT}")

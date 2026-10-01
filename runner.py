@@ -34,7 +34,7 @@ FORBIDDEN_MODULES = {
 
 # Forbidden built-in functions and identifiers
 FORBIDDEN_BUILTINS = {
-    "eval", "exec", "compile", "__import__", "open", "input",
+    "eval", "exec", "compile", "__import__", "open",
     "breakpoint", "help", "globals", "locals", "vars", "memoryview"
 }
 
@@ -122,7 +122,7 @@ def execute_via_remote_runner(code: str, timeout: int = 4):
             "mode": "remote_error"
         }
 
-def run_isolated_code(code: str, timeout: int = 4):
+def run_isolated_code(code: str, timeout: int = 4, stdin_inputs: list = None):
     """
     Executes Python code.
     Checks AST safety first, then delegates to Remote Docker Runner if configured,
@@ -138,9 +138,19 @@ def run_isolated_code(code: str, timeout: int = 4):
             "mode": "ast_rejected"
         }
 
+    exec_code = code
+    if "input" in code:
+        try:
+            ast.parse(code)
+            q_vals = [str(x) for x in stdin_inputs] if stdin_inputs else ["75", "30", "10", "Youssef", "2026"]
+            preamble = f"input = (lambda _q={repr(q_vals)}: lambda _p='': str(_q.pop(0)) if _q else '75')()\n"
+            exec_code = preamble + code
+        except SyntaxError:
+            pass
+
     # Production Mode: Delegate to Remote Docker Runner Service if configured
     if RUNNER_URL:
-        return execute_via_remote_runner(code, timeout=timeout)
+        return execute_via_remote_runner(exec_code, timeout=timeout)
 
     # Restrict execution environment
     clean_env = {
@@ -154,11 +164,11 @@ def run_isolated_code(code: str, timeout: int = 4):
     temp_path = None
     try:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8-sig") as temp_file:
-            temp_file.write(code)
+            temp_file.write(exec_code)
             temp_path = temp_file.name
 
         proc = subprocess.run(
-            [sys.executable, "-I", "-B", temp_path], # -I isolates from user environment & site-packages
+            [sys.executable, "-X", "utf8", "-I", "-B", temp_path], # -X utf8 enables UTF-8 stdout/stderr; -I isolates environment
             capture_output=True,
             text=True,
             timeout=timeout,

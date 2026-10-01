@@ -1,4 +1,4 @@
-﻿"""
+"""
 Security & Rate Limiting Middleware Module (Phase 5)
 Features:
 - In-memory Sliding Window Rate Limiting (per IP or User ID)
@@ -32,7 +32,8 @@ SECURITY_HEADERS = {
     "Content-Security-Policy": (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com data:; "
         "img-src 'self' data:; "
         "connect-src 'self';"
     )
