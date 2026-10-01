@@ -87,8 +87,8 @@ class PythonLearningHandler(SimpleHTTPRequestHandler):
         path = parsed.path
         client_ip = self.get_client_ip()
 
-        # Rate Limit for General GET APIs (60 requests per minute)
-        if not security.check_rate_limit(f"get_{client_ip}", max_requests=60, window_seconds=60):
+        # Rate Limit for General GET APIs (allow up to 300 requests per minute for live real-time heartbeats)
+        if not security.check_rate_limit(f"get_{client_ip}", max_requests=300, window_seconds=60):
             return self.send_json({"error": "تم تجاوز الحد المسموح من الطلبات. يرجى الانتظار قليلاً."}, status=429)
 
         # Serve static frontend home

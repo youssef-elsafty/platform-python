@@ -1908,12 +1908,10 @@
             }
         });
 
-        // Auto-poll state every 20 seconds so logged-in students receive alerts in real time
+        // Auto-poll state every 4 seconds so students immediately see unlocked tasks and notifications in real time
         setInterval(() => {
-            if (platformState && platformState.user) {
-                fetchPlatformState();
-            }
-        }, 20000);
+            fetchPlatformState();
+        }, 4000);
 
         // ================= EXAM MANAGEMENT & STUDENT EXAM LOGIC =================
         let currentStudentExam = null;

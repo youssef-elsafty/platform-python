@@ -807,9 +807,81 @@
         .student-override-drawer.open {
             display: block;
         }
+
+        /* Live Sync Indicator & Real-Time Toasts */
+        .live-pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse-green 1.8s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .admin-toast {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 0.82rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(12px);
+            pointer-events: auto;
+            animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transition: all 0.3s ease;
+        }
+        .admin-toast.toast-student {
+            border-right: 4px solid #34d399;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.25);
+        }
+        .admin-toast.toast-submission {
+            border-right: 4px solid #38bdf8;
+            box-shadow: 0 10px 30px rgba(56, 189, 248, 0.25);
+        }
+        .admin-toast.toast-inquiry {
+            border-right: 4px solid #fbbf24;
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.25);
+        }
+        .admin-toast.toast-info {
+            border-right: 4px solid #a855f7;
+        }
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateX(-40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
     </style>
 </head>
 <body>
+
+    <!-- TOAST CONTAINER FOR REAL-TIME ALERTS -->
+    <div id="toast-container" style="position:fixed; top:20px; left:20px; z-index:999999; display:flex; flex-direction:column; gap:10px; max-width:380px; pointer-events:none;"></div>
+
+    <!-- ADMIN LOGIN MODAL (Shows if session expired or accessed directly without admin login) -->
+    <div id="admin-login-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(10,15,29,0.96); z-index:9999999; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+        <div style="background:#111827; border:1px solid rgba(255,255,255,0.15); border-radius:18px; padding:32px; max-width:380px; width:90%; box-shadow:0 25px 60px rgba(0,0,0,0.8); text-align:center;">
+            <div style="font-size:2.8rem; margin-bottom:12px;">👑</div>
+            <h2 style="font-size:1.3rem; font-weight:800; color:white; margin-bottom:6px;">تسجيل دخول المشرف</h2>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:18px;">يرجى تسجيل الدخول للوصول إلى لوحة المتابعة المباشرة</p>
+            <div id="admin-login-err" style="display:none; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#f87171; padding:8px 12px; border-radius:8px; font-size:0.78rem; margin-bottom:14px; text-align:center;"></div>
+            <input type="text" id="admin-login-user" placeholder="اسم المستخدم (مثلاً: youssef)" class="form-input" style="margin-bottom:12px; font-size:0.88rem;">
+            <input type="password" id="admin-login-pass" placeholder="كلمة المرور" class="form-input" style="margin-bottom:18px; font-size:0.88rem;" onkeydown="if(event.key==='Enter') submitAdminLogin()">
+            <button class="btn-action-sm btn-warn" onclick="submitAdminLogin()" style="width:100%; padding:12px; font-size:0.92rem; font-weight:700;">
+                🚀 دخول للوحة التحكم
+            </button>
+            <div style="margin-top:14px; font-size:0.75rem; color:var(--text-dim);">
+                الحساب الافتراضي: <code>youssef</code> / <code>admin123</code>
+            </div>
+        </div>
+    </div>
 
     <!-- SIDEBAR -->
     <aside class="sidebar">
@@ -894,19 +966,28 @@
 
         <!-- TOP NAVBAR -->
         <header class="top-navbar">
-            <div class="top-navbar-right">
+            <div class="top-navbar-right" style="display:flex; align-items:center; gap:12px;">
                 <div class="gold-pill-title">
                     <span>لوحة التحكم - المشرف</span>
+                </div>
+                <div id="live-sync-indicator" style="display:flex; align-items:center; gap:8px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); padding:5px 12px; border-radius:20px;">
+                    <span class="live-pulse-dot"></span>
+                    <span style="font-size:0.75rem; font-weight:700; color:#34d399;">مباشر (Live Sync 3s)</span>
                 </div>
             </div>
 
             <div class="top-navbar-left">
+                <button class="top-btn" id="btn-audio-toggle" onclick="toggleAudioChime()" title="تشغيل/كتم صوت التنبيهات الحية عند تسجيل طالب جديد أو حل مهمة">
+                    <span id="audio-icon">🔔</span>
+                    <span id="audio-text" style="font-size:0.75rem;">الصوت مفعل</span>
+                </button>
+
                 <button class="top-btn" onclick="switchNav('calendar-notifs')">
                     <span>⚙️ الإعدادات العامة</span>
                 </button>
 
                 <button class="top-btn" onclick="openNotifModal()">
-                    <span>🔔 الإشعارات</span>
+                    <span>📬 الإشعارات</span>
                     <span class="notif-badge-pill" id="top-notif-count">0</span>
                 </button>
 
@@ -1693,13 +1774,159 @@
             }
         }
 
+        // Real-Time Sync & Audio State
+        let isFirstLoad = true;
+        let knownStudentIds = new Set();
+        let knownSubmissionIds = new Set();
+        let lastStatsSummary = null;
+        window.audioEnabled = true;
+
+        function toggleAudioChime() {
+            window.audioEnabled = !window.audioEnabled;
+            const icon = document.getElementById('audio-icon');
+            const txt = document.getElementById('audio-text');
+            if (icon) icon.textContent = window.audioEnabled ? '🔔' : '🔇';
+            if (txt) txt.textContent = window.audioEnabled ? 'الصوت مفعل' : 'مكتوم';
+            showLiveToast(window.audioEnabled ? 'تم تفعيل صوت التنبيهات الحية 🔔' : 'تم كتم صوت التنبيهات 🔇', 'info', 2000);
+        }
+
+        function playNotificationChime() {
+            if (!window.audioEnabled) return;
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const now = ctx.currentTime;
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, now); // D5
+                osc.frequency.setValueAtTime(880.00, now + 0.1); // A5
+                
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } catch (e) {}
+        }
+
+        function showLiveToast(message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `admin-toast toast-${type}`;
+            const icon = type === 'student' ? '🎉' : (type === 'submission' ? '💻' : (type === 'inquiry' ? '📬' : 'ℹ️'));
+            toast.innerHTML = `
+                <div style="font-size:1.3rem;">${icon}</div>
+                <div style="flex-grow:1; line-height:1.4;">${message}</div>
+                <button onclick="this.parentElement.remove()" style="background:transparent; border:none; color:rgba(255,255,255,0.4); font-size:1rem; cursor:pointer;">✕</button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-40px)';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        async function submitAdminLogin() {
+            const username = document.getElementById('admin-login-user').value.trim();
+            const password = document.getElementById('admin-login-pass').value;
+            const errBox = document.getElementById('admin-login-err');
+            if (!username || !password) {
+                if (errBox) { errBox.textContent = "يرجى كتابة اسم المستخدم وكلمة المرور"; errBox.style.display = 'block'; }
+                return;
+            }
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username_or_email: username, password })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    document.getElementById('admin-login-overlay').style.display = 'none';
+                    if (errBox) errBox.style.display = 'none';
+                    fetchAdminStats();
+                } else {
+                    if (errBox) { errBox.textContent = d.error || "بيانات الدخول غير صحيحة"; errBox.style.display = 'block'; }
+                }
+            } catch (e) {
+                if (errBox) { errBox.textContent = "خطأ في الاتصال بالخادم"; errBox.style.display = 'block'; }
+            }
+        }
+
         async function fetchAdminStats() {
             try {
                 let res = await fetch(`${apiBase}/api/admin/stats`);
+                if (res.status === 401 || res.status === 403) {
+                    const loginOverlay = document.getElementById('admin-login-overlay');
+                    if (loginOverlay) loginOverlay.style.display = 'flex';
+                    return;
+                }
                 if (!res.ok) {
                     res = await fetch('/api/admin/stats');
+                    if (res.status === 401 || res.status === 403) {
+                        const loginOverlay = document.getElementById('admin-login-overlay');
+                        if (loginOverlay) loginOverlay.style.display = 'flex';
+                        return;
+                    }
                 }
                 const data = await res.json();
+                if (data.error && (data.error.includes("غير مصرح") || data.error.includes("Unauthorized"))) {
+                    const loginOverlay = document.getElementById('admin-login-overlay');
+                    if (loginOverlay) loginOverlay.style.display = 'flex';
+                    return;
+                }
+
+                // Hide login overlay if authorized
+                const loginOverlay = document.getElementById('admin-login-overlay');
+                if (loginOverlay) loginOverlay.style.display = 'none';
+
+                // Check for live updates (New students, new task submissions, new inquiries)
+                if (!isFirstLoad) {
+                    // 1. Detect New Students
+                    const currentStudents = data.students || [];
+                    const newStudents = currentStudents.filter(s => !knownStudentIds.has(s.id));
+                    if (newStudents.length > 0) {
+                        newStudents.forEach(ns => {
+                            knownStudentIds.add(ns.id);
+                            showLiveToast(`<strong>طالب جديد سجل في المنصة الآن! 🎉</strong><br>${escapeHtml(ns.username)} (${escapeHtml(ns.email || '')})`, 'student', 5000);
+                            playNotificationChime();
+                        });
+                    }
+
+                    // 2. Detect New Task Submissions
+                    const currentSubs = data.task_submissions || [];
+                    const newSubs = currentSubs.filter(sub => !knownSubmissionIds.has(sub.id));
+                    if (newSubs.length > 0) {
+                        newSubs.forEach(nsub => {
+                            knownSubmissionIds.add(nsub.id);
+                            const isPassed = nsub.passed === 1 || nsub.passed === true;
+                            showLiveToast(`<strong>حل كود جديد وصل! 💻</strong><br>${escapeHtml(nsub.username)} أرسل حلاً للمهمة: <code>${escapeHtml(nsub.task_id)}</code> ${isPassed ? '✓' : '⏳'}`, 'submission', 5000);
+                            playNotificationChime();
+                        });
+                    }
+
+                    // 3. Detect New Inquiries
+                    const totalInq = data.total_inquiries || 0;
+                    if (lastStatsSummary && totalInq > (lastStatsSummary.total_inquiries || 0)) {
+                        showLiveToast(`<strong>رسالة استفسار جديدة وصلت! 📬</strong><br>قام أحد الطلاب بإرسال رسالة دعم من المنصة.`, 'inquiry', 5000);
+                        playNotificationChime();
+                    }
+                } else {
+                    // Seed initial IDs
+                    (data.students || []).forEach(s => knownStudentIds.add(s.id));
+                    (data.task_submissions || []).forEach(sub => knownSubmissionIds.add(sub.id));
+                    isFirstLoad = false;
+                }
+
+                lastStatsSummary = data;
                 currentAdminData = data;
                 renderDashboard(data);
             } catch (err) {
@@ -2820,6 +3047,8 @@
         window.addEventListener('DOMContentLoaded', () => {
             fetchAdminStats();
             loadCalendarAndNotifs();
+            // Live Real-Time Heartbeat: Auto-refresh admin stats every 3 seconds
+            setInterval(fetchAdminStats, 3000);
         });
     </script>
 </body>
