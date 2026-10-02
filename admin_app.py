@@ -6,7 +6,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import db
 import engine
 
-PORT = 8081
+PORT = int(os.environ.get("ADMIN_PORT", os.environ.get("PORT", 8009)))
 
 class AdminHandler(SimpleHTTPRequestHandler):
     def end_headers(self):

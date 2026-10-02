@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark">
+<html lang="ar" dir="rtl" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,16 +7,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=20260921_4">
+    <link rel="stylesheet" href="/static/css/style.css?v=20261001_palette_v3">
     <script>
-        // Apply theme immediately before render
+        // Apply official color palette theme immediately before render
         (function() {
-            const saved = localStorage.getItem('theme') || 'dark';
+            let saved = localStorage.getItem('theme_palette_v1');
+            if (!saved) {
+                saved = 'light';
+                localStorage.setItem('theme_palette_v1', 'light');
+                localStorage.setItem('theme', 'light');
+            } else {
+                saved = localStorage.getItem('theme') || 'light';
+            }
             document.documentElement.setAttribute('data-theme', saved);
         })();
     </script>
 </head>
-<body class="dark-mode-body">
+<body class="light-mode-body">
 
     <!-- Top Navigation Bar (Noor EdTech Dark) -->
     <header class="header-light">
@@ -24,7 +31,7 @@
             <!-- Right side: Brand Badge -->
             <div class="brand-pill-gold">
                 <span>⚡</span>
-                <span>مسار إتقان بايثون • البكالوريا والثانوية العامة 🚀</span>
+                <span class="brand-title">مسار إتقان بايثون <span class="brand-subtitle">• البكالوريا والثانوية العامة 🚀</span></span>
             </div>
 
             <!-- Middle Navigation Links -->
@@ -66,11 +73,11 @@
                         👤 دخول / تسجيل
                     </button>
                     <div id="user-pill" style="display: none; align-items: center; gap: 6px;">
-                        <span id="user-name-display" style="font-weight: 400; color: #d97706; font-size: 0.85rem;"></span>
-                        <button id="btn-open-admin" onclick="openAdminModal()" class="btn-action" style="display: none; padding: 4px 10px; font-size: 0.72rem; background: linear-gradient(135deg, #f59e0b, #d97706); border:none;">
+                        <span id="user-name-display" style="font-weight: 700; color: var(--secondary-text); font-size: 0.85rem;"></span>
+                        <button id="btn-open-admin" onclick="openAdminModal()" class="btn-action" style="display: none; padding: 5px 12px; font-size: 0.75rem; background: var(--palette-lime); color: var(--primary-text); border: 1.5px solid var(--palette-taupe); border-radius: 9999px; font-weight: 700; box-shadow: var(--shadow-sm);">
                             👑 لوحة الإدارة
                         </button>
-                        <button onclick="logoutUser()" class="btn-secondary btn-danger" style="padding: 4px 8px; font-size: 0.72rem;">خروج</button>
+                        <button onclick="logoutUser()" class="btn-secondary btn-danger" style="padding: 5px 10px; font-size: 0.75rem; border-radius: 9999px;">خروج</button>
                     </div>
                 </div>
 
@@ -313,7 +320,7 @@
                     <!-- Direct Tasks -->
                     <div class="card" style="margin-bottom: 20px;">
                         <div class="card-header">
-                            <div class="card-title" style="color: #d97706;">
+                            <div class="card-title">
                                 <span>🎯</span> مهام الدرس المباشرة (Direct Tasks)
                             </div>
                             <span style="font-size: 0.8rem; color: var(--text-dim);">تطبيق على ما درسته للتو</span>
@@ -324,9 +331,9 @@
                     </div>
 
                     <!-- Cumulative Review Tasks -->
-                    <div id="cumulative-section" class="card" style="border-color: #6366f1; background: #f8fafc; margin-bottom: 20px;">
+                    <div id="cumulative-section" class="card" style="border-color: var(--palette-peach); background: #ffffff; margin-bottom: 20px;">
                         <div class="card-header">
-                            <div class="card-title" style="color: #4f46e5;">
+                            <div class="card-title" style="color: #4a2210;">
                                 <span>🧠</span> مهام المراجعة التراكمية (Cumulative Review Tasks)
                             </div>
                             <span class="task-badge-cumulative">شاملة للدروس السابقة</span>
@@ -338,21 +345,21 @@
                     </div>
 
                     <!-- Dedicated Assignment Upload Card -->
-                    <div id="assignment-upload-section" class="card" style="border-color: #0284c7; background: #f0f9ff; margin-bottom: 20px;">
+                    <div id="assignment-upload-section" class="card" style="border-color: var(--palette-mint); background: #ffffff; margin-bottom: 20px;">
                         <div class="card-header">
-                            <div class="card-title" style="color: #0284c7;">
+                            <div class="card-title" style="color: var(--secondary-text);">
                                 <span>📁</span> تسليم ورفع التكليفات والواجبات (Submit Assignments)
                             </div>
-                            <span class="task-badge-direct" style="background: #e0f2fe; color: #0284c7; border-color: #0284c7;">متاح للجميع 🚀</span>
+                            <span class="task-badge-direct">متاح للجميع 🚀</span>
                         </div>
                         <p style="font-size: 0.82rem; color: var(--text-dim); margin-bottom: 12px; line-height: 1.5;">
                             ارفع ملف الحل الخاص بك (.py, .ipynb, .pdf, .zip, .txt) براحتك في أي وقت ليتم مراجعته وتوثيقه في ملفك وسجلات المشرف.
                         </p>
 
-                        <div style="display: flex; flex-direction: column; gap: 10px; background: #ffffff; padding: 14px; border-radius: 12px; border: 1px dashed #0284c7;">
+                        <div style="display: flex; flex-direction: column; gap: 10px; background: #ffffff; padding: 14px; border-radius: 12px; border: 1.5px dashed var(--palette-mint);">
                             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                                 <input type="text" id="custom-upload-notes" class="code-textarea" style="min-height: 38px; height: 38px; flex: 2; padding: 6px 12px; font-size: 0.82rem;" placeholder="ملاحظة أو اسم المهمة (اختياري - مثال: حل تكليف معمل 1)">
-                                <label for="direct-dropzone-input" class="btn-action" style="padding: 8px 16px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; background: #0284c7; border: none;">
+                                <label for="direct-dropzone-input" class="btn-action" style="padding: 8px 16px; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                                     <span>📤</span> اختر ملف لرفعه الآن
                                 </label>
                                 <input type="file" id="direct-dropzone-input" onchange="handleDirectFileUpload(event)" style="display: none;" accept=".py,.txt,.pdf,.zip,.ipynb">
@@ -362,19 +369,19 @@
                     </div>
 
                     <!-- Dedicated Open Exams Card -->
-                    <div id="student-exams-section" class="card" style="border-color: #ef4444; background: #fef2f2; margin-bottom: 20px;">
+                    <div id="student-exams-section" class="card" style="border-color: var(--palette-taupe); background: #ffffff; margin-bottom: 20px;">
                         <div class="card-header">
-                            <div class="card-title" style="color: #dc2626;">
+                            <div class="card-title">
                                 <span>📝</span> الامتحانات والاختبارات المتاحة (Live Open Exams)
                             </div>
-                            <span class="task-badge-direct" style="background: #fee2e2; color: #dc2626; border-color: #ef4444;">تحكم المشرف 🔒</span>
+                            <span class="task-badge-cumulative">تحكم المشرف 🔒</span>
                         </div>
                         <p style="font-size: 0.82rem; color: var(--text-dim); margin-bottom: 12px; line-height: 1.5;">
                             الامتحانات المفتوحة حالياً من قِبل المشرف. إذا لم تظهر امتحانات هنا، فهذا يعني أن جميع الامتحانات مغلقة أو لم يأتِ موعدها بعد.
                         </p>
 
                         <div id="student-open-exams-list" style="display: flex; flex-direction: column; gap: 10px;">
-                            <div style="background: #ffffff; padding: 16px; border-radius: 12px; border: 1px dashed #ef4444; text-align: center; color: var(--text-dim); font-size: 0.85rem;">
+                            <div style="background: #ffffff; padding: 16px; border-radius: 12px; border: 1.5px dashed var(--palette-taupe); text-align: center; color: var(--text-dim); font-size: 0.85rem;">
                                 🔒 لا توجد امتحانات مفتوحة حالياً. سيقوم المشرف بفتح الامتحان في الموعد المحدد.
                             </div>
                         </div>
@@ -519,13 +526,13 @@
 
             <div class="modal-footer">
                 <div class="modal-footer-actions">
-                    <button id="btn-save-draft" onclick="manualSaveDraft()" class="btn-secondary" style="color: #2563eb; background: #eff6ff; border-color: #bfdbfe; font-weight: 600;">
+                    <button id="btn-save-draft" onclick="manualSaveDraft()" class="btn-secondary">
                         💾 حفظ مسودة
                     </button>
-                    <button id="btn-run-code" onclick="testRunCode()" class="btn-secondary" style="font-weight: 600;">
+                    <button id="btn-run-code" onclick="testRunCode()" class="btn-secondary">
                         ▶️ تجربة الكود
                     </button>
-                    <button id="btn-submit-task" onclick="submitTaskCode()" class="btn-action" style="font-weight: 700; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
+                    <button id="btn-submit-task" onclick="submitTaskCode()" class="btn-action">
                         🚀 إرسال وتحقق
                     </button>
                 </div>
@@ -682,7 +689,7 @@
 
             <div class="modal-footer" style="flex-direction: row; gap: 8px;">
                 <button onclick="closeContactModal()" class="btn-secondary" style="flex: 1;">إلغاء</button>
-                <button id="btn-submit-contact" onclick="submitContactForm()" class="btn-action" style="flex: 2; background: linear-gradient(135deg, #10b981, #059669);">
+                <button id="btn-submit-contact" onclick="submitContactForm()" class="btn-action" style="flex: 2;">
                     🚀 إرسال الرسالة
                 </button>
             </div>
@@ -1366,16 +1373,17 @@
 
         function toggleTheme() {
             const html = document.documentElement;
-            const current = html.getAttribute('data-theme') || 'dark';
+            const current = html.getAttribute('data-theme') || 'light';
             const next = current === 'dark' ? 'light' : 'dark';
             html.setAttribute('data-theme', next);
             if (document.body) {
                 document.body.className = next === 'dark' ? 'dark-mode-body' : 'light-mode-body';
             }
             localStorage.setItem('theme', next);
+            localStorage.setItem('theme_palette_v1', next);
             const btn = document.querySelector('.btn-theme-toggle');
             if (btn) {
-                btn.textContent = next === 'dark' ? '🌙' : '☀️';
+                btn.textContent = next === 'dark' ? '☀️' : '🌙';
             }
         }
 

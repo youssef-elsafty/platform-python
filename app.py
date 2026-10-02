@@ -17,7 +17,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-PORT = int(os.environ.get("PORT", 8080))
+PORT = int(os.environ.get("PORT", 8008))
 ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "") # Empty means strict origin or same-origin
 MAX_PAYLOAD_SIZE = 10 * 1024 * 1024 # 10 MB maximum request body for file uploads
 
